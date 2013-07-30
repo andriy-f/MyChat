@@ -1,0 +1,15 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="MyChat.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="DefServer" Type="System.String" Scope="User">
+      <Value Profile="(Default)">localhost</Value>
+    </Setting>
+    <Setting Name="DefPort" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">6614</Value>
+    </Setting>
+    <Setting Name="logFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)">MyChat.log</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

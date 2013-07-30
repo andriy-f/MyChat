@@ -1,0 +1,1 @@
+START "ChatServer" ".\MyChatServer\bin\Release\MyChatServer.exe"

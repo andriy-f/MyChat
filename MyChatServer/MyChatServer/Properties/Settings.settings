@@ -1,0 +1,15 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="MyChatServer.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="logFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)">MyChatServer.log</Value>
+    </Setting>
+    <Setting Name="Port" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">6614</Value>
+    </Setting>
+    <Setting Name="String1" Type="System.String" Scope="User">
+      <Value Profile="(Default)">cb83d9f812bbaec604a8fbf4d37b77ac66c59038b75a3914af088fccb051ac9ce5c1133e5f5fbdd27068c066a732c9aa88bb4574b831e984f845351197b29c9ca3646391645110d1d964746508f9a081b498573e37418c2c59f379678222ad28</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
