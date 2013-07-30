@@ -1,23 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using MyChatServer.ChatServerDataSetTableAdapters;
-
-
-namespace MyChatServer.Data
+﻿namespace MyChatServer.Data
 {
+    using MyChatServer.ChatServerDataSetTableAdapters;
+
     class MSSQLDataGetter : DataGetter
     {
         private LoginsTableAdapter _loginsTableAdapter;
 
-        public MSSQLDataGetter(string connectionString)
+        private MSSQLDataGetter(string connectionString)
         {
             _loginsTableAdapter = new LoginsTableAdapter();
             _loginsTableAdapter.Connection.ConnectionString = connectionString;
         }
 
-        public MSSQLDataGetter(LoginsTableAdapter loginsTableAdapter)
+        private MSSQLDataGetter(LoginsTableAdapter loginsTableAdapter)
         {
             _loginsTableAdapter = loginsTableAdapter;
         }

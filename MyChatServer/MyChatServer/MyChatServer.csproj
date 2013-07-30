@@ -99,6 +99,7 @@
     </Compile>
     <Compile Include="Data\DataGetter.cs" />
     <Compile Include="Data\MSSQLDataGetter.cs" />
+    <Compile Include="Data\PredefinedDataGetter.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
     </Compile>

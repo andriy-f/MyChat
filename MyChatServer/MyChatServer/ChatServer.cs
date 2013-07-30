@@ -48,11 +48,11 @@ namespace MyChatServer
 
         public static void init(ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter1)
         {
-            //loginsTableAdapter = loginsTableAdapter1;
-            dataGetter = new MSSQLDataGetter(loginsTableAdapter1);
+            dataGetter = DataGetter.Instance;
             initStaticDSA();
             clientBase.Clear();
-            //Listener thread
+            
+            // Listener thread
             if(ListenerThread!=null)            
                 ListenerThread.Abort();
             ListenerThread = new System.Threading.Thread(new System.Threading.ThreadStart(ChatServer.Listen));

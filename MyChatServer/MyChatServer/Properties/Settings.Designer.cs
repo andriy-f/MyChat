@@ -49,15 +49,25 @@ namespace MyChatServer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("cb83d9f812bbaec604a8fbf4d37b77ac66c59038b75a3914af088fccb051ac9ce5c1133e5f5fbdd27" +
-            "068c066a732c9aa88bb4574b831e984f845351197b29c9ca3646391645110d1d964746508f9a081b" +
-            "498573e37418c2c59f379678222ad28")]
+        [global::System.Configuration.DefaultSettingValueAttribute("CB83D9F812BBAEC604A8FBF4D37B77AC66C59038B75A3914AF088FCCB051AC9CE5C1133E5F5FBDD27" +
+            "068C066A732C9AA88BB4574B831E984F845351197B29C9CA3646391645110D1D964746508F9A0811" +
+            "3DE115ED2259936E2533764B1222880")]
         public string String1 {
             get {
                 return ((string)(this["String1"]));
             }
             set {
                 this["String1"] = value;
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.ConnectionString)]
+        [global::System.Configuration.DefaultSettingValueAttribute("Data Source=.;Initial Catalog=ChatServer;Integrated Security=True")]
+        public string ChatServerConnectionString {
+            get {
+                return ((string)(this["ChatServerConnectionString"]));
             }
         }
     }
