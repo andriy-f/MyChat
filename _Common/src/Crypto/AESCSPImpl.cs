@@ -59,7 +59,7 @@ namespace My.Cryptography
 
             using (MemoryStream msEncrypt = new MemoryStream()) //--> Encrypted data
             {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, _encryptor,
+                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, _aes.CreateEncryptor(),
                                                                  CryptoStreamMode.Write)) //<-- plain data
                 {
                     csEncrypt.Write(byteArray, 0, byteArray.Length);
@@ -79,7 +79,7 @@ namespace My.Cryptography
 
             using (MemoryStream msDecrypt = new MemoryStream()) //--> Decrypted data
             {
-                using (CryptoStream cs = new CryptoStream(msDecrypt, _decryptor,
+                using (CryptoStream cs = new CryptoStream(msDecrypt, _aes.CreateDecryptor(),
                                                           CryptoStreamMode.Write)) //<-- Encrypted data
                 {
                     cs.Write(cipherText, 0, cipherText.Length);
