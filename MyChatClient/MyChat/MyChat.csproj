@@ -57,7 +57,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BouncyCastle.CryptoExt">
-      <HintPath>..\..\Lib\BouncyCastle.CryptoExt.dll</HintPath>
+      <HintPath>..\..\_Common\Lib\BouncyCastle.CryptoExt.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">

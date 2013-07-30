@@ -5,6 +5,8 @@ using System.Globalization;
 using System.Windows.Forms;
 using System.IO;
 
+using My.Cryptography;
+
 namespace MyChatServer
 {    
 
@@ -96,10 +98,10 @@ namespace MyChatServer
         public static string loadConStr()
         {
             string res=null;
-            System.Security.Cryptography.AESCSPImpl aes1 = new System.Security.Cryptography.AESCSPImpl(settKey, settIV);
+            AESCSPImpl aes1 = new AESCSPImpl(settKey, settIV);
             try
             {
-                res = aes1.decryptStr(System.Text.HexRep.ToBytes(Properties.Settings.Default.String1)); 
+                res = aes1.DecryptStr(System.Text.HexRep.ToBytes(Properties.Settings.Default.String1)); 
             }
             finally
             {
@@ -111,10 +113,10 @@ namespace MyChatServer
 
         public static void saveConStr(string plaintext)
         {
-            System.Security.Cryptography.AESCSPImpl aes1 = new System.Security.Cryptography.AESCSPImpl(settKey, settIV);
+            AESCSPImpl aes1 = new AESCSPImpl(settKey, settIV);
             try
             {
-                Properties.Settings.Default.String1 = System.Text.HexRep.ToString(aes1.encryptStr(plaintext));                
+                Properties.Settings.Default.String1 = System.Text.HexRep.ToString(aes1.EncryptStr(plaintext));                
             }
             finally
             {

@@ -57,7 +57,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BouncyCastle.CryptoExt">
-      <HintPath>..\..\Lib\BouncyCastle.CryptoExt.dll</HintPath>
+      <HintPath>..\..\_Common\Lib\BouncyCastle.CryptoExt.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -73,16 +73,29 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="src\ChatServer.cs" />
+    <Compile Include="..\..\_Common\src\Crypto\AESCSPImpl.cs">
+      <Link>Crypto\AESCSPImpl.cs</Link>
+    </Compile>
+    <Compile Include="..\..\_Common\src\Crypto\ECDHWrapper.cs">
+      <Link>Crypto\ECDHWrapper.cs</Link>
+    </Compile>
+    <Compile Include="..\..\_Common\src\Crypto\ECDSAWrapper.cs">
+      <Link>Crypto\ECDSAWrapper.cs</Link>
+    </Compile>
+    <Compile Include="..\..\_Common\src\Formatting\HexRep.cs">
+      <Link>Formatting\HexRep.cs</Link>
+    </Compile>
+    <Compile Include="ChatServer.cs" />
     <Compile Include="ChatServerDataSet.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
     </Compile>
-    <Compile Include="src\Crypto\AESCSPImpl.cs" />
-    <Compile Include="src\Crypto\ECDHWrapper.cs" />
-    <Compile Include="src\Crypto\ECDSAWrapper.cs" />
-    <Compile Include="src\HexRep.cs" />
+    <Compile Include="..\..\_Common\src\Crypto\CryptoCmn.cs">
+      <Link>Crypto\CryptoCmn.cs</Link>
+    </Compile>
+    <Compile Include="Data\DataGetter.cs" />
+    <Compile Include="Data\MSSQLDataGetter.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -175,6 +188,7 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

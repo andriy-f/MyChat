@@ -6,20 +6,23 @@ using System.Text;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using CustomCrypto;
+using MyChatServer.Data;
 
 namespace MyChatServer
 {
+    using My.Cryptography;
+
     public static class ChatServer
     {
         #region Fields
 
         //public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
-        public static System.Collections.Hashtable clientBase = new System.Collections.Hashtable(10);//login/ClientParams
+        public static System.Collections.Hashtable clientBase = new System.Collections.Hashtable(10);//login/ChatClient
 		public static System.Collections.Hashtable roomBase = new System.Collections.Hashtable(3);//room/RoomParams
         const int agrlen = 32;
 
         private static System.Threading.Thread ListenerThread=null;
-        private static MyChatServer.ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter;
+        private static DataGetter dataGetter;
 
         private static List<string> clientsToFree = new List<string>(5);
         private static List<string> roomsToFree = new List<string>(5);
@@ -34,6 +37,8 @@ namespace MyChatServer
 
         static byte[] iv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
+        private static MyRandoms myRandoms = new MyRandoms();
+
         //static ECDSAWrapper seanceDsaClientChecker;//checks client's messages
         //static ECDSAWrapper seanceDsaServerSigner;//signs servers messages
 
@@ -41,9 +46,10 @@ namespace MyChatServer
 
         #region Init&Free
 
-        public static void init(MyChatServer.ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter1)
+        public static void init(ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter1)
         {
-            loginsTableAdapter = loginsTableAdapter1;
+            //loginsTableAdapter = loginsTableAdapter1;
+            dataGetter = new MSSQLDataGetter(loginsTableAdapter1);
             initStaticDSA();
             clientBase.Clear();
             //Listener thread
@@ -152,10 +158,10 @@ namespace MyChatServer
                                 //Logon attempt
                                 bytes = readWrappedEncMsg(stream, cryptor);
                                 parseLogonMsg(bytes, out login, out pass);
-                                if (inBaseLogPass(login, pass))
+                                if (dataGetter.ValidateLoginPass(login, pass))
                                     if (isLogged(login))
                                     {
-                                        ClientParams oldUP = (ClientParams)clientBase[login];
+                                        ChatClient oldUP = (ChatClient)clientBase[login];
                                         int oldresp = -2;
                                         if (oldUP.client.Connected)
                                         {
@@ -204,9 +210,9 @@ namespace MyChatServer
                                 //Registration without logon
                                 bytes = readWrappedEncMsg(stream, cryptor);
                                 parseLogonMsg(bytes, out login, out pass);
-                                if (!isLoginInBase(login))
+                                if (!dataGetter.ValidateLogin(login))
                                 {
-                                    addLoginPass2Base(login, pass);
+                                    dataGetter.AddNewLoginPass(login, pass);
                                     stream.WriteByte(0);
                                     Program.LogEvent(string.Format("Registration success: User '{0}' registered", login));
                                 }
@@ -258,7 +264,7 @@ namespace MyChatServer
 
         internal static void processAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
         {
-            ClientParams newUP = new ClientParams();
+            ChatClient newUP = new ChatClient();
             newUP.client = client;
             newUP.cryptor = cryptor1;
             clientBase.Add(login, newUP);
@@ -275,7 +281,7 @@ namespace MyChatServer
             try
             {
                 //Check if client is legit
-                byte[] send = genSecRandomBytes(100);
+                byte[] send = myRandoms.genSecureRandomBytes(100);
                 writeWrappedMsg(stream, send);
                 byte[] rec = readWrappedMsg(stream);
                 //Program.LogEvent(HexRep.ToString(rec));
@@ -324,8 +330,8 @@ namespace MyChatServer
 
         static void processCurrentConnection(System.Collections.DictionaryEntry de)
         {
-            ClientParams clientParams = (ClientParams)de.Value;            
-            TcpClient client = clientParams.client;
+            ChatClient chatClient = (ChatClient)de.Value;            
+            TcpClient client = chatClient.client;
             if (client != null && client.Connected)
             {
                 string clientLogin = (string)de.Key;
@@ -341,17 +347,17 @@ namespace MyChatServer
                         switch (type)
                         {
                             case 3://Message to room
-                                data = readWrappedEncMsg(stream, clientParams.cryptor);
+                                data = readWrappedEncMsg(stream, chatClient.cryptor);
                                 parseChatMsg(data, out source, out dest, out messg);//dest - room
                                 Program.LogEvent(string.Format("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
                                 //if user(source) in room(dest)
-                                ClientParams senderUP = (ClientParams)clientBase[source];
+                                ChatClient senderUP = (ChatClient)clientBase[source];
                                 if (senderUP.rooms.Contains(dest))
                                 {
                                     RoomParams roomParams = (RoomParams)roomBase[dest];
                                     foreach (string roomUsr in roomParams.users)
                                     {
-                                        ClientParams destUP = (ClientParams)clientBase[roomUsr];
+                                        ChatClient destUP = (ChatClient)clientBase[roomUsr];
                                         if (destUP.client.Connected)
                                         {
                                             try
@@ -373,12 +379,12 @@ namespace MyChatServer
                                 }
                                 break;
                             case 4://Message to user
-                                data = readWrappedEncMsg(stream, clientParams.cryptor);
+                                data = readWrappedEncMsg(stream, chatClient.cryptor);
                                 parseChatMsg(data, out source, out dest, out messg);//dest - user
                                 Program.LogEvent(string.Format("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
                                 if (clientBase.Contains(dest))
                                 {
-                                    ClientParams destUP = (ClientParams)clientBase[dest];//Destination user parameters
+                                    ChatClient destUP = (ChatClient)clientBase[dest];//Destination user parameters
                                     if (destUP.client.Connected)
                                     {
                                         try
@@ -399,13 +405,13 @@ namespace MyChatServer
                                 }
                                 break;
                             case 5://Message to All
-                                data = readWrappedEncMsg(stream, clientParams.cryptor);
+                                data = readWrappedEncMsg(stream, chatClient.cryptor);
                                 //Display to all
                                 parseChatMsg(data, out source, out dest, out messg);
                                 Program.LogEvent(string.Format("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
                                 foreach (System.Collections.DictionaryEntry destDE in clientBase)
                                 {
-                                    ClientParams destUP = (ClientParams)destDE.Value;
+                                    ChatClient destUP = (ChatClient)destDE.Value;
                                     if (destUP.client.Connected)
                                     {
                                         try
@@ -423,7 +429,7 @@ namespace MyChatServer
                                 break;
                             case 6://Join Room
                                 string room, pass;
-                                data = readWrappedEncMsg(stream, clientParams.cryptor);
+                                data = readWrappedEncMsg(stream, chatClient.cryptor);
                                 parseJoinRoomMsg(data, out room, out pass);
                                 if (roomExist(room))
                                 {
@@ -491,23 +497,10 @@ namespace MyChatServer
 
         #endregion
 
-        #region BaseLocal
-
-        static bool inBaseLogPass(string login, string password)
-        { return (int)loginsTableAdapter.ValidateLogPass(login, password)>0; }
-
-        static bool isLoginInBase(string login)
-        { return (int)loginsTableAdapter.isLoginInBase(login) > 0; }
-
-        static void addLoginPass2Base(string login, string password)
-        { loginsTableAdapter.addNewLoginPass(login, password); }        
+        #region Rooms&Clients in local datastore
 
         static bool isLogged(string login)
         { return clientBase.Contains(login); }
-
-        #endregion
-		
-		#region RoomsLocal
 
         static bool addRoom(string room, string pass)
 		{
@@ -523,7 +516,7 @@ namespace MyChatServer
 		
 		static void addUserToRoom(string room, string login)
         {
-            ((ClientParams)clientBase[login]).rooms.Add(room);
+            ((ChatClient)clientBase[login]).rooms.Add(room);
             ((RoomParams)roomBase[room]).users.Add(login);
         }
 
@@ -543,21 +536,21 @@ namespace MyChatServer
 
         static void removeClientFromRoom(string login, string room)
         {
-            ((ClientParams)clientBase[login]).rooms.Remove(room);
+            ((ChatClient)clientBase[login]).rooms.Remove(room);
             ((RoomParams)roomBase[room]).users.Remove(login);
         }
 
-        static void cleanupRooms()
-        {
-            foreach (System.Collections.DictionaryEntry de in roomBase)
-            {
-                RoomParams rp = ((RoomParams)de.Value);
-                if (rp.users.Count == 0) roomsToFree.Add((string)de.Key);
-            }
-            foreach (string froom in roomsToFree)
-                roomBase.Remove(froom);
-            roomsToFree.Clear();
-        }
+        //static void cleanupRooms()
+        //{
+        //    foreach (System.Collections.DictionaryEntry de in roomBase)
+        //    {
+        //        RoomParams rp = ((RoomParams)de.Value);
+        //        if (rp.users.Count == 0) roomsToFree.Add((string)de.Key);
+        //    }
+        //    foreach (string froom in roomsToFree)
+        //        roomBase.Remove(froom);
+        //    roomsToFree.Clear();
+        //}
 
         static bool roomExist(string room)
         {
@@ -767,7 +760,7 @@ namespace MyChatServer
             int streamDataSize = readInt32(stream);
             Byte[] streamData = new Byte[streamDataSize];
             stream.Read(streamData, 0, streamDataSize);
-            return cryptor.decrypt(streamData);
+            return cryptor.Decrypt(streamData);
         }
 
         static void writeWrappedMsg(NetworkStream stream, Byte[] bytes)
@@ -780,7 +773,7 @@ namespace MyChatServer
 
         static void writeWrappedEncMsg(NetworkStream stream, Byte[] plain, AESCSPImpl cryptor)
         {
-            byte[] bytes = cryptor.encrypt(plain);
+            byte[] bytes = cryptor.Encrypt(plain);
             Byte[] data = new Byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
@@ -818,7 +811,7 @@ namespace MyChatServer
                                     if (!loginBase.Contains(login))
                                     {
                                         loginBase.Add(login, pass);
-                                        ClientParams cup = new ClientParams();
+                                        ChatClient cup = new ChatClient();
                                         cup.client = client;
                                         clientBase.Add(login, cup);
                                         stream.WriteByte(0);
@@ -919,7 +912,7 @@ namespace MyChatServer
 
         #region Helper classes
 
-        public class ClientParams
+        public class ChatClient
         {
             //public bool active = true; EQVIVALENT to client==null
             public List<string> rooms = new List<string>(3);//must be list of unique
@@ -948,34 +941,6 @@ namespace MyChatServer
            
         }
 
-        #endregion
-
-        #region Generators
-        /// <summary>
-        /// Generates random byte array of set length
-        /// </summary>
-        /// <param name="len">length of return byte array</param>
-        /// <returns>random byte array of set length</returns>
-        static byte[] genRandomBytes(int len)
-        {
-            Random rand = new Random();
-            byte[] bytes = new byte[len];
-            rand.NextBytes(bytes);
-            return bytes;
-        }
-
-        /// <summary>
-        /// Generates secure random byte array of set length
-        /// </summary>
-        /// <param name="len">length of return byte array</param>
-        /// <returns>secure random byte array of set length</returns>
-        static byte[] genSecRandomBytes(int len)
-        {
-            Org.BouncyCastle.Security.SecureRandom rand = new Org.BouncyCastle.Security.SecureRandom();
-            byte[] bytes = new byte[len];
-            rand.NextBytes(bytes);
-            return bytes;
-        } 
         #endregion
     }
 }
