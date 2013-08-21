@@ -9,8 +9,6 @@ namespace My.Cryptography
         #region Fields
 
         private readonly AesCryptoServiceProvider _aes;
-        private readonly ICryptoTransform _encryptor;
-        private readonly ICryptoTransform _decryptor;
 
         #endregion
 
@@ -19,8 +17,6 @@ namespace My.Cryptography
         public AESCSPImpl()
         {
             _aes = new AesCryptoServiceProvider();
-            _encryptor = _aes.CreateEncryptor();
-            _decryptor = _aes.CreateDecryptor();
         }
 
         public AESCSPImpl(byte[] newKey, byte[] newIV)
@@ -31,17 +27,10 @@ namespace My.Cryptography
                 throw new ArgumentNullException("newIV");
 
             _aes = new AesCryptoServiceProvider {Key = newKey, IV = newIV};
-            _encryptor = _aes.CreateEncryptor();
-            _decryptor = _aes.CreateDecryptor();
         }
 
         public void Clear()
         {
-            if(_encryptor!=null)
-                _encryptor.Dispose();
-            if (_decryptor != null)
-                _decryptor.Dispose();
-
             if (_aes != null)
                 _aes.Clear();
         }
@@ -102,7 +91,7 @@ namespace My.Cryptography
             byte[] res = null;
             using (MemoryStream msEncrypt = new MemoryStream()) //--> encrypted data
             {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, _encryptor,
+                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, _aes.CreateEncryptor(),
                                                                  CryptoStreamMode.Write)) //<--plain data
                 {
                     using (StreamWriter swEncrypt = new StreamWriter(csEncrypt)) //<-- plain data(string)  
@@ -123,7 +112,7 @@ namespace My.Cryptography
             string res = null;
             using (MemoryStream msDecrypt = new MemoryStream(cipherText)) //<-- encrypted data
             {
-                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, _decryptor,
+                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, _aes.CreateDecryptor(),
                                                                  CryptoStreamMode.Read)) //--> decrypted data
                 {
                     using (StreamReader srDecrypt = new StreamReader(csDecrypt)) //--> decrypted data (string)
@@ -139,20 +128,20 @@ namespace My.Cryptography
 
         #region Enc to Stream, dec from Stream
 
-        public void Encrypt(byte[] byteArray, Stream sEncrypted)
-        {
-            if (byteArray == null || byteArray.Length <= 0)
-                throw new ArgumentNullException("byteArray");
+        ////public void Encrypt(byte[] byteArray, Stream sEncrypted)
+        ////{
+        ////    if (byteArray == null || byteArray.Length <= 0)
+        ////        throw new ArgumentNullException("byteArray");
 
-            using (CryptoStream csEncrypt = new CryptoStream(sEncrypted, _encryptor,
-                                                             CryptoStreamMode.Write))
-                //<-- plain data
-            {
-                csEncrypt.Write(byteArray, 0, byteArray.Length);
-                //csEncrypt.FlushFinalBlock(); //No need as csEncrypt is closed after using
-            }
+        ////    using (CryptoStream csEncrypt = new CryptoStream(sEncrypted, _aes.CreateEncryptor(),
+        ////                                                     CryptoStreamMode.Write))
+        ////        //<-- plain data
+        ////    {
+        ////        csEncrypt.Write(byteArray, 0, byteArray.Length);
+        ////        //csEncrypt.FlushFinalBlock(); //No need as csEncrypt is closed after using
+        ////    }
 
-        }
+        ////}
 
         public byte[] Decrypt(Stream sCrypted)
         {
@@ -161,7 +150,7 @@ namespace My.Cryptography
 
             byte[] res = null;
 
-            using (CryptoStream csDecrypt = new CryptoStream(sCrypted, _decryptor,
+            using (CryptoStream csDecrypt = new CryptoStream(sCrypted, _aes.CreateDecryptor(),
                                                              CryptoStreamMode.Read))
             {
                 long len = csDecrypt.Length;
@@ -172,22 +161,22 @@ namespace My.Cryptography
             return res;
         }
 
-        public byte[] Decrypt(Stream sCrypted, int length)//length of crypted or length of decrypted?
-        {
-            if (sCrypted == null || !sCrypted.CanRead)
-                throw new ArgumentNullException("sCrypted");
+        ////public byte[] Decrypt(Stream sCrypted, int length)//length of crypted or length of decrypted?
+        ////{
+        ////    if (sCrypted == null || !sCrypted.CanRead)
+        ////        throw new ArgumentNullException("sCrypted");
 
-            byte[] res = null;
+        ////    byte[] res = null;
 
-            using (CryptoStream csDecrypt = new CryptoStream(sCrypted, _decryptor,
-                                                             CryptoStreamMode.Read))
-            {
-                res = new byte[length];
-                csDecrypt.Read(res, 0, length);
-            }
+        ////    using (CryptoStream csDecrypt = new CryptoStream(sCrypted, _aes.CreateEncryptor(),
+        ////                                                     CryptoStreamMode.Read))
+        ////    {
+        ////        res = new byte[length];
+        ////        csDecrypt.Read(res, 0, length);
+        ////    }
 
-            return res;
-        }
+        ////    return res;
+        ////}
 
         #endregion //Enc to Stream, dec from Stream
     }
