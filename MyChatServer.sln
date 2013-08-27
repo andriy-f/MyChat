@@ -1,7 +1,9 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyChatServer", "MyChatServer\MyChatServer\MyChatServer.csproj", "{FF5A1224-AE47-4FCF-97D7-C2C7E13DEB26}"
+EndProject
+Project("{F088123C-0E9E-452A-89E6-6BA2F21D5CAC}") = "ServerModels", "MyChatServer\ServerModels\ServerModels.modelproj", "{95032480-4EED-43A8-8B19-C159E33119CF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +15,10 @@ Global
 		{FF5A1224-AE47-4FCF-97D7-C2C7E13DEB26}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FF5A1224-AE47-4FCF-97D7-C2C7E13DEB26}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FF5A1224-AE47-4FCF-97D7-C2C7E13DEB26}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95032480-4EED-43A8-8B19-C159E33119CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95032480-4EED-43A8-8B19-C159E33119CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95032480-4EED-43A8-8B19-C159E33119CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95032480-4EED-43A8-8B19-C159E33119CF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
