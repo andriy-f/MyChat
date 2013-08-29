@@ -12,11 +12,11 @@ namespace MyChatServer
 {
     using My.Cryptography;
 
-    public static class ChatServer
+    public class ChatServer
     {
         #region Fields
 
-        //public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
+        ////public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
         public static System.Collections.Hashtable clientBase = new System.Collections.Hashtable(10);//login/ChatClient
 		public static System.Collections.Hashtable roomBase = new System.Collections.Hashtable(3);//room/RoomParams
         const int agrlen = 32;
@@ -46,14 +46,14 @@ namespace MyChatServer
 
         #region Init&Free
 
-        public static void init(ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter1)
+        public static void init()
         {
             dataGetter = DataGetter.Instance;
             initStaticDSA();
             clientBase.Clear();
             
             // Listener thread
-            if(ListenerThread!=null)            
+            if(ListenerThread != null)            
                 ListenerThread.Abort();
             ListenerThread = new System.Threading.Thread(new System.Threading.ThreadStart(ChatServer.Listen));
             ListenerThread.Priority = System.Threading.ThreadPriority.Lowest;
@@ -936,9 +936,6 @@ namespace MyChatServer
         {
             staticDsaServerSigner = new ECDSAWrapper(1, true, staticServerPrivKey);
             staticDsaClientChecker = new ECDSAWrapper(1, false, staticClientPubKey);
-
-            
-           
         }
 
         #endregion

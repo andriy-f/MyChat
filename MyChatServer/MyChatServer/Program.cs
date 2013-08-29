@@ -8,8 +8,7 @@ using System.IO;
 using My.Cryptography;
 
 namespace MyChatServer
-{    
-
+{
     static class Program
     {
         #region Fields
@@ -29,7 +28,7 @@ namespace MyChatServer
         [STAThread]
         static void Main()
         {
-            //Visual
+            // Visual
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -38,50 +37,36 @@ namespace MyChatServer
             AppDomain.CurrentDomain.UnhandledException += (sender, e) => LogException(e.ExceptionObject as Exception);
             Application.ThreadException += (sender, e) => LogException(e.Exception);
 
-            initLogFile();
+            InitLogFile();
 
-            //Database Connection
-            if (initTableAdapter())
-            {
-                ChatServer.init(loginsTableAdapterdef);//must catch invalid pass 
-            }
-            else
-            {
-                logForm.LogException(new Exception("Unable to create database connection. See log file for details"));                
-                //defMsgBox("Unable to create database connection -> stopping. See log file for details");
-                //return;
-            }
-           
-            //Init ServerConfig Form            
-            //Application.Run(new ServerConfig());
-            ServerConfig serverConfig = new ServerConfig();
+            ChatServer.init(); // must catch invalid pass 
+            
+            // Init ServerConfig Form            
+            new ServerConfig();
             Application.Run();
         }
 
         #region Inits
 
-        private static void initLogFile()
+        private static void InitLogFile()
         {
             try
             {
-                logFile = MyChatServer.Properties.Settings.Default.logFile;
+                logFile = Properties.Settings.Default.logFile;
             }
             catch (Exception ex)
             {
-                logForm.LogException(new Exception(String.Format("Unable to create log file. Using default ({0}).", logFile), ex));
-                //defMsgBox(String.Format("Unable to create log file. Reason: {0}{1}{0}Using default.", Environment.NewLine, ex, logFile));
+                logForm.LogException(new Exception(string.Format("Unable to create log file. Using default ({0}).", logFile), ex));
+                Console.Error.WriteLine("Log init failed" + ex);
             }
         }
 
-        public static bool initTableAdapter()
+        public static bool InitTableAdapter()
         {
             try
             {
                 loginsTableAdapterdef = new ChatServerDataSetTableAdapters.LoginsTableAdapter();
-                //loginsTableAdapterdef.Connection.ConnectionString = Crypto.Crypto1.decStrDef(Properties.Settings.Default.String1);
-                loginsTableAdapterdef.Connection.ConnectionString = loadConStr();
-                //MessageBox.Show(aes1.decryptStr(System.Text.HexRep.ToBytes(Properties.Settings.Default.String1)));               
-
+                loginsTableAdapterdef.Connection.ConnectionString = GetConnectionString();
                 return true;
             }
             catch (Exception ex)
@@ -95,33 +80,32 @@ namespace MyChatServer
 
         #region Connection String
 
-        public static string loadConStr()
+        public static string GetConnectionString()
         {
-            string res=null;
-            AESCSPImpl aes1 = new AESCSPImpl(settKey, settIV);
+            string res;
+            var aes1 = new AESCSPImpl(settKey, settIV);
             try
             {
                 res = aes1.DecryptStr(System.Text.HexRep.ToBytes(Properties.Settings.Default.String1)); 
             }
             finally
             {
-                if (aes1 != null)
-                    aes1.Clear();
+                aes1.Clear();
             }
+
             return res;
         }
 
-        public static void saveConStr(string plaintext)
+        public static void SaveConStr(string plaintext)
         {
-            AESCSPImpl aes1 = new AESCSPImpl(settKey, settIV);
+            var aes1 = new AESCSPImpl(settKey, settIV);
             try
             {
                 Properties.Settings.Default.String1 = System.Text.HexRep.ToString(aes1.EncryptStr(plaintext));                
             }
             finally
             {
-                if (aes1!=null)
-                    aes1.Clear();
+                aes1.Clear();
             }
         }
 
@@ -185,19 +169,6 @@ namespace MyChatServer
 #endif
                 }
             }
-        }
-
-        public static void defMsgBox(string msg)
-        {
-            MessageBox.Show(msg, "Chat Server");
-        }
-
-        private static string getIntBytes(byte[] bts)
-        {
-            System.Text.StringBuilder sb = new System.Text.StringBuilder(String.Format("{0}", bts.Length));
-            foreach (byte bt in bts)
-                sb.Append(String.Format("{0}, ", bt));
-            return sb.ToString();
         }
 
         #endregion

@@ -18,8 +18,6 @@ namespace MyChatServer
             nudPort.Value = Convert.ToDecimal(Properties.Settings.Default.Port);            
         }
 
-       
-
         private void ServerConfig_Load(object sender, EventArgs e)
         {
             try
@@ -57,9 +55,7 @@ namespace MyChatServer
         private void bRefresh_Click(object sender, EventArgs e)
         {
             Program.loginsTableAdapterdef.Fill(this.chatServerDataSet.Logins);
-        }        
-
-        
+        }     
 
         private void bApply_Click(object sender, EventArgs e)
         {
@@ -76,7 +72,7 @@ namespace MyChatServer
 
                 Program.loginsTableAdapterdef.Connection.ConnectionString = builder.ConnectionString;
 
-                Program.saveConStr(builder.ConnectionString);
+                Program.SaveConStr(builder.ConnectionString);
                 //Properties.Settings.Default.String1 = Crypto.Crypto1.encStrDef(builder.ConnectionString);
                 Properties.Settings.Default.Save();
             }
