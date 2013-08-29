@@ -62,6 +62,9 @@
     <Reference Include="BouncyCastle.Crypto">
       <HintPath>..\..\packages\BouncyCastle.1.7.0\lib\Net40-Client\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
+    <Reference Include="log4net">
+      <HintPath>..\..\packages\log4net.2.0.0\lib\net40-full\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -142,6 +145,10 @@
     </None>
     <None Include="ChatServerDataSet.xss">
       <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
+    </None>
+    <None Include="log4net.config">
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">

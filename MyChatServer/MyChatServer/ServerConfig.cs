@@ -22,8 +22,8 @@ namespace MyChatServer
         {
             try
             {                
-                fillDBConnectionTab();
-                Program.loginsTableAdapterdef.Fill(this.chatServerDataSet.Logins);                     
+                ////fillDBConnectionTab();
+                ////Program.loginsTableAdapterdef.Fill(this.chatServerDataSet.Logins);                     
             }
             catch (Exception ex)
             {
