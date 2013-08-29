@@ -4,15 +4,15 @@
 
     public abstract class DataGetter
     {
-        ////private DataGetter()
-        ////{
-        ////}
+        protected DataGetter()
+        {
+        }
 
         public static DataGetter Instance
         {
             get
             {
-                return Nested.instance;
+                return Nested.DataInstance;
             }
         }
 
@@ -24,7 +24,7 @@
 
         private class Nested
         {
-            internal static readonly DataGetter instance = new PredefinedDataGetter();
+            internal static readonly DataGetter DataInstance = new PredefinedDataGetter();
             
             // Explicit static constructor to tell C# compiler
             // not to mark type as beforefieldinit
