@@ -91,6 +91,7 @@
     <Compile Include="..\..\_Common\src\Formatting\HexRep.cs">
       <Link>Formatting\HexRep.cs</Link>
     </Compile>
+    <Compile Include="ChatClient.cs" />
     <Compile Include="ChatServer.cs" />
     <Compile Include="ChatServerDataSet.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -109,6 +110,7 @@
     <Compile Include="LogForm.Designer.cs">
       <DependentUpon>LogForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="RoomParams.cs" />
     <Compile Include="ServerConfig.cs">
       <SubType>Form</SubType>
     </Compile>
