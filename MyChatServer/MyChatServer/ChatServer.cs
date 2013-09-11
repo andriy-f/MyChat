@@ -6,11 +6,12 @@ using System.Text;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using CustomCrypto;
-using MyChatServer.Data;
 
 namespace MyChatServer
 {
     using My.Cryptography;
+
+    using MyChatServer.DAL;
 
     public class ChatServer
     {

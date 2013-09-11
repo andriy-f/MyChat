@@ -1,4 +1,4 @@
-﻿namespace MyChatServer.Data
+﻿namespace MyChatServer.DAL
 {
     using System.Diagnostics.CodeAnalysis;
 

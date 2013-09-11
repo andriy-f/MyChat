@@ -1,4 +1,4 @@
-﻿namespace MyChatServer.Data
+﻿namespace MyChatServer.DAL
 {
     using MyChatServer.ChatServerDataSetTableAdapters;
 
@@ -8,29 +8,29 @@
 
         private MSSQLDataGetter(string connectionString)
         {
-            _loginsTableAdapter = new LoginsTableAdapter();
-            _loginsTableAdapter.Connection.ConnectionString = connectionString;
+            this._loginsTableAdapter = new LoginsTableAdapter();
+            this._loginsTableAdapter.Connection.ConnectionString = connectionString;
         }
 
         private MSSQLDataGetter(LoginsTableAdapter loginsTableAdapter)
         {
-            _loginsTableAdapter = loginsTableAdapter;
+            this._loginsTableAdapter = loginsTableAdapter;
         }
 
         public override bool ValidateLogin(string login)
         {
-            return (int)_loginsTableAdapter.isLoginInBase(login) > 0;
+            return (int)this._loginsTableAdapter.isLoginInBase(login) > 0;
         }
 
         public override bool ValidateLoginPass(string login, string password)
         {
-            return (int)_loginsTableAdapter.ValidateLogPass(login, password) > 0;
+            return (int)this._loginsTableAdapter.ValidateLogPass(login, password) > 0;
         }
 
 
         public override void AddNewLoginPass(string login, string password)
         {
-            _loginsTableAdapter.addNewLoginPass(login, password);
+            this._loginsTableAdapter.addNewLoginPass(login, password);
         }
     }
 }
