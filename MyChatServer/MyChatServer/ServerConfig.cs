@@ -28,7 +28,7 @@ namespace MyChatServer
             catch (Exception ex)
             {
                 Program.LogException(ex);
-                Program.logForm.LogException(new Exception("Error while connecting to DB. See logfile for details"));
+                Program.LogForm.LogException(new Exception("Error while connecting to DB. See logfile for details"));
                 //MessageBox.Show("Error while connecting to DB");
                 //Application.Exit();
             }
@@ -38,7 +38,7 @@ namespace MyChatServer
         {
             System.Data.SqlClient.SqlConnectionStringBuilder builder = 
                 new System.Data.SqlClient.SqlConnectionStringBuilder(
-                    Program.loginsTableAdapterdef.Connection.ConnectionString);            
+                    Program.LoginsTableAdapterdef.Connection.ConnectionString);            
             
             tbDataSource.Text=builder["Data Source"].ToString();
             tbInitCat.Text=builder["Initial Catalog"].ToString();
@@ -49,12 +49,12 @@ namespace MyChatServer
 
         private void bUpdate_Click(object sender, EventArgs e)
         {
-            Program.loginsTableAdapterdef.Update(chatServerDataSet);            
+            Program.LoginsTableAdapterdef.Update(chatServerDataSet);            
         }
 
         private void bRefresh_Click(object sender, EventArgs e)
         {
-            Program.loginsTableAdapterdef.Fill(this.chatServerDataSet.Logins);
+            Program.LoginsTableAdapterdef.Fill(this.chatServerDataSet.Logins);
         }     
 
         private void bApply_Click(object sender, EventArgs e)
@@ -70,7 +70,7 @@ namespace MyChatServer
                 builder["User ID"] = tbUser.Text;
                 builder["Password"] = tbPass.Text;
 
-                Program.loginsTableAdapterdef.Connection.ConnectionString = builder.ConnectionString;
+                Program.LoginsTableAdapterdef.Connection.ConnectionString = builder.ConnectionString;
 
                 Program.SaveConStr(builder.ConnectionString);
                 //Properties.Settings.Default.String1 = Crypto.Crypto1.encStrDef(builder.ConnectionString);
@@ -108,7 +108,7 @@ namespace MyChatServer
 
         private void tsmiLog_Click(object sender, EventArgs e)
         {
-            Program.logForm.showMe();
+            Program.LogForm.showMe();
         }
 
         private void tsmiExit_Click(object sender, EventArgs e)
