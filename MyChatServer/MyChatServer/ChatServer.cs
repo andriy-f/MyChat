@@ -139,7 +139,7 @@ namespace MyChatServer
         static void processPendingConnection(TcpClient client)
         {
             byte[] bytes;
-            System.Net.IPAddress ipAddress = TCPClient2IPAddress(client);
+            System.Net.IPAddress ipAddress = Utils.TCPClient2IPAddress(client);
             Program.LogEvent(String.Format("Connected from {0}", ipAddress));
             NetworkStream stream = client.GetStream();
             stream.ReadTimeout = 1000;
@@ -250,9 +250,7 @@ namespace MyChatServer
                 //Ban IP ipAddress...
             }
         }
-
         
-
         static void sendData2Stream(NetworkStream stream, byte type, byte[] data)
         {
             stream.WriteByte(type);
@@ -488,7 +486,7 @@ namespace MyChatServer
                     catch (Exception ex) //Invalid data from current client
                     {
                         Program.LogEvent(String.Format("Received invalid data from client with login '{1}', IP '{2}'-> kick.{0}Reason:{0}{3}",
-                            Environment.NewLine, clientLogin, TCPClient2IPAddress(client), ex));
+                            Environment.NewLine, clientLogin, Utils.TCPClient2IPAddress(client), ex));
                         clientsToFree.Add(clientLogin);
                         freeTCPClient(client);
                     }
@@ -784,11 +782,6 @@ namespace MyChatServer
         #endregion
 
         #region Converters
-
-        static System.Net.IPAddress TCPClient2IPAddress(TcpClient client)
-        {            
-            return (client.Client.RemoteEndPoint as System.Net.IPEndPoint).Address;
-        }
 
         #endregion
 

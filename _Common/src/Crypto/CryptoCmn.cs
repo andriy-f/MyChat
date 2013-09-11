@@ -11,7 +11,6 @@ namespace System.Security.Cryptography
         private RNGCryptoServiceProvider _rngCsp = new RNGCryptoServiceProvider();
         private Org.BouncyCastle.Security.SecureRandom _secureRandom = new Org.BouncyCastle.Security.SecureRandom();
         
-
         /// <summary>
         /// Generates random byte array of set length
         /// </summary>
