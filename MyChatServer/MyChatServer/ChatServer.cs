@@ -3,6 +3,7 @@
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Net;
     using System.Net.Sockets;
@@ -28,39 +29,21 @@
 
         private static readonly Hashtable RoomBase = new Hashtable(3); // room/RoomParams
 
-        private static readonly byte[] StaticServerPrivKey =
-        {
-            71, 177, 16, 173, 145, 214, 65, 103, 205, 32, 107, 19, 241, 
-            223, 113, 87, 172, 178, 195, 75, 171, 208, 130, 47, 94, 
-            231, 207, 220, 175, 147
-        };
-
-        private static readonly byte[] StaticClientPubKey =
-        {
-            4, 99, 1, 55, 9, 242, 97, 187, 246, 226, 134, 61, 17, 155, 
-            222, 10, 51, 13, 189, 232, 245, 186, 228, 228, 238, 99, 35, 
-            125, 165, 38, 99, 67, 134, 36, 246, 134, 76, 217, 117, 135, 
-            70, 63, 208, 9, 252, 2, 81, 227, 196, 2, 19, 112, 228, 245, 
-            86, 190, 33, 150, 25, 166, 41
-        };
+        
 
         private static readonly byte[] Iv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
-        private static readonly MyRandoms MyRandoms = new MyRandoms();
+        private static readonly MyRandoms Randoms = new MyRandoms();
 
         private static Thread listenerThread;
 
         private static DataGetter dataGetter;
 
-        private static List<string> clientsToFree = new List<string>(5);
+        private static readonly List<string> clientsToFree = new List<string>(5);
 
-        private static List<string> roomsToFree = new List<string>(5);
+        private static readonly List<string> roomsToFree = new List<string>(5);
 
         private static bool continueToListen = true;
-        
-        private static ECDSAWrapper staticDsaClientChecker; // checks with staticClientPubKey
-
-        private static ECDSAWrapper staticDsaServerSigner; // signs with staticServerPrivKey
 
         //// static ECDSAWrapper seanceDsaClientChecker;//checks client's messages
         
@@ -73,8 +56,7 @@
         public static void init()
         {
             dataGetter = DataGetter.Instance;
-            staticDsaServerSigner = new ECDSAWrapper(1, true, StaticServerPrivKey);
-            staticDsaClientChecker = new ECDSAWrapper(1, false, StaticClientPubKey);
+            
             ClientBase.Clear();
 
             // Listener thread
@@ -342,17 +324,17 @@
             try
             {
                 // Check if client is legit
-                byte[] send = MyRandoms.genSecureRandomBytes(100);
+                byte[] send = Randoms.genSecureRandomBytes(100);
                 WriteWrappedMsg(stream, send);
                 byte[] rec = ReadWrappedMsg(stream);
 
                 // Program.LogEvent(HexRep.ToString(rec));
-                bool clientLegit = staticDsaClientChecker.verifyHash(send, rec);
+                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
                 if (clientLegit)
                 {
                     // Clients want to know if server is legit
                     rec = ReadWrappedMsg(stream);
-                    send = staticDsaServerSigner.signHash(rec);
+                    send = Crypto.Utils.ServerSigner.signHash(rec);
                     WriteWrappedMsg(stream, send);
                     return 0;
                 }
@@ -859,7 +841,7 @@
             return BitConverter.ToInt32(data, 0);
         }
 
-        private static byte[] ReadWrappedMsg(NetworkStream stream)
+        public static byte[] ReadWrappedMsg(NetworkStream stream)
         {
             int streamDataSize = ReadInt32(stream);
             byte[] streamData = new byte[streamDataSize];
@@ -889,18 +871,18 @@
             return cryptor.Decrypt(streamData);
         }
 
-        private static void WriteWrappedMsg(NetworkStream stream, byte[] bytes)
+        public static void WriteWrappedMsg(Stream stream, byte[] bytes)
         {
-            byte[] data = new byte[4 + bytes.Length];
+            var data = new byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
             stream.Write(data, 0, data.Length);
         }
 
-        private static void WriteWrappedEncMsg(NetworkStream stream, byte[] plain, AESCSPImpl cryptor)
+        private static void WriteWrappedEncMsg(Stream stream, byte[] plain, AESCSPImpl cryptor)
         {
-            byte[] bytes = cryptor.Encrypt(plain);
-            byte[] data = new byte[4 + bytes.Length];
+            var bytes = cryptor.Encrypt(plain);
+            var data = new byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
             stream.Write(data, 0, data.Length);

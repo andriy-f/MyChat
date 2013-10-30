@@ -101,6 +101,8 @@
     <Compile Include="..\..\_Common\src\Crypto\CryptoCmn.cs">
       <Link>Crypto\CryptoCmn.cs</Link>
     </Compile>
+    <Compile Include="Consts.cs" />
+    <Compile Include="Crypto\Utils.cs" />
     <Compile Include="DAL\DataGetter.cs" />
     <Compile Include="DAL\MSSQLDataGetter.cs" />
     <Compile Include="DAL\PredefinedDataGetter.cs" />

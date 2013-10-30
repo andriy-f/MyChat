@@ -1,7 +1,9 @@
 ﻿namespace MyChatServer
 {
+    using System;
     using System.Collections.Generic;
     using System.Net.Sockets;
+    using System.Security.Cryptography;
 
     using My.Cryptography;
 
@@ -10,6 +12,8 @@
     /// </summary>
     public class ChatClient
     {
+        private static readonly MyRandoms Randoms = new MyRandoms(); // TODO: use server one
+
         /// <summary>
         /// Must be list of unique
         /// </summary>
@@ -28,9 +32,7 @@
         public AESCSPImpl Cryptor { get; set; }
 
         public string Login { get; set; }
-
-
-
+        
         /// <summary>
         /// TODO: use this
         /// </summary>
@@ -153,32 +155,37 @@
         /// Processes authentification attempt from new client
         /// </summary> 
         /// <returns>0 if ok, 1 if wrong, 2 if exception</returns>
-        ////internal int processAuth()
-        ////{
-        ////    try
-        ////    {
-        ////        //Check if client is legit
-        ////        byte[] send = new System.Security.Cryptography.MyRandoms.genSecureRandomBytes(100);
-        ////        writeWrappedMsg(stream, send);
-        ////        byte[] rec = readWrappedMsg(stream);
-        ////        //Program.LogEvent(HexRep.ToString(rec));
-        ////        bool clientLegit = staticDsaClientChecker.verifyHash(send, rec);
-        ////        if (clientLegit)
-        ////        {
-        ////            //Clients want to know if server is legit
-        ////            rec = readWrappedMsg(stream);
-        ////            send = staticDsaServerSigner.signHash(rec);
-        ////            writeWrappedMsg(stream, send);
-        ////            return 0;
-        ////        }
-        ////        else
-        ////            return 1;
-        ////    }
-        ////    catch (Exception ex)
-        ////    {
-        ////        Program.LogEvent(String.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
-        ////        return 2;
-        ////    }
-        ////}
+        internal int ProcessAuth()
+        {
+            try
+            {
+                var stream = this.AtcpClient.GetStream();
+                
+                // Check if client is legit
+                byte[] send = Randoms.genSecureRandomBytes(100);
+                ChatServer.WriteWrappedMsg(stream, send);
+                byte[] rec = ChatServer.ReadWrappedMsg(stream);
+
+                // Program.LogEvent(HexRep.ToString(rec));
+                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
+                if (clientLegit)
+                {
+                    // Clients want to know if server is legit
+                    rec = ChatServer.ReadWrappedMsg(stream);
+                    send = Crypto.Utils.ServerSigner.signHash(rec);
+                    ChatServer.WriteWrappedMsg(stream, send);
+                    return 0;
+                }
+                else
+                {
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                Program.LogEvent(string.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
+                return 2;
+            }
+        }
     }
 }
