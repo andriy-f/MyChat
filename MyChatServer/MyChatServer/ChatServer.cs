@@ -24,7 +24,7 @@
 
         ////public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
 
-        private static readonly Hashtable ClientBase = new Hashtable(10); // login/ChatClient
+        private static readonly Dictionary<string, ChatClient> ClientBase = new Dictionary<string, ChatClient>(10); // login/ChatClient
 
         private static readonly Hashtable RoomBase = new Hashtable(3); // room/RoomParams
 
@@ -73,7 +73,8 @@
         public static void init()
         {
             dataGetter = DataGetter.Instance;
-            InitStaticDSA();
+            staticDsaServerSigner = new ECDSAWrapper(1, true, StaticServerPrivKey);
+            staticDsaClientChecker = new ECDSAWrapper(1, false, StaticClientPubKey);
             ClientBase.Clear();
 
             // Listener thread
@@ -82,7 +83,7 @@
                 listenerThread.Abort();
             }
 
-            listenerThread = new Thread(ChatServer.Listen)
+            listenerThread = new Thread(Listen)
                              {
                                  Priority = ThreadPriority.Lowest
                              };
@@ -96,15 +97,6 @@
             {
                 continueToListen = false;
                 listenerThread.Join();
-            }
-        }
-
-        public static void Finish2()
-        {
-            if (listenerThread != null)
-            {
-                continueToListen = false;
-                listenerThread.Abort();
             }
         }
 
@@ -144,9 +136,10 @@
                     else
                     {
                         // Processing current connections
-                        foreach (DictionaryEntry de in ClientBase)
+                        foreach (var de in ClientBase)
                         {
-                            ProcessCurrentConnection(de);
+                            de.Value.Login = de.Key; // TODO: refactor
+                            ProcessCurrentConnection(de.Value);
                         }
 
                         // free resources from logout of clients
@@ -206,9 +199,9 @@
                                     {
                                         var oldUserParams = (ChatClient)ClientBase[login];
                                         int oldresp = -2;
-                                        if (oldUserParams.client.Connected)
+                                        if (oldUserParams.AtcpClient.Connected)
                                         {
-                                            NetworkStream oldStream = oldUserParams.client.GetStream();
+                                            NetworkStream oldStream = oldUserParams.AtcpClient.GetStream();
 
                                             try
                                             {
@@ -235,7 +228,7 @@
                                         else
                                         {
                                             // old client with login <login> dead -> dispose of him and connect new
-                                            FreeTCPClient(oldUserParams.client);
+                                            FreeTCPClient(oldUserParams.AtcpClient);
                                             removeClient(login);
                                             ProcessAndAcceptNewClient(client, login, cryptor);
                                             Program.LogEvent(
@@ -333,8 +326,8 @@
         internal static void ProcessAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
         {
             ChatClient newUP = new ChatClient();
-            newUP.client = client;
-            newUP.cryptor = cryptor1;
+            newUP.AtcpClient = client;
+            newUP.Cryptor = cryptor1;
             ClientBase.Add(login, newUP);
             client.GetStream().WriteByte(0);
         }
@@ -379,14 +372,14 @@
         {
             try
             {
-                ECDHWrapper ecdh1 = new ECDHWrapper(AgreementLength);
+                var ecdh1 = new ECDHWrapper(AgreementLength);
                 byte[] recCliPub = ReadWrappedMsg(stream);
                 WriteWrappedMsg(stream, ecdh1.PubData);
                 byte[] agr = ecdh1.calcAgreement(recCliPub);
 
-                int aeskeylen = 32;
-                byte[] aeskey = new byte[aeskeylen];
-                Array.Copy(agr, 0, aeskey, 0, aeskeylen);
+                const int AESKeyLength = 32;
+                var aeskey = new byte[AESKeyLength];
+                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
 
                 cryptor = new AESCSPImpl(aeskey, Iv1);
                 return 0;
@@ -399,14 +392,13 @@
             }
         }
 
-        private static void ProcessCurrentConnection(DictionaryEntry de)
+        private static void ProcessCurrentConnection(ChatClient chatClient)
         {
-            ChatClient chatClient = (ChatClient)de.Value;
-            TcpClient client = chatClient.client;
+            TcpClient client = chatClient.AtcpClient;
             if (client != null && client.Connected)
             {
-                string clientLogin = (string)de.Key;
-                NetworkStream stream = client.GetStream();
+                string clientLogin = chatClient.Login;
+                var stream = client.GetStream();
                 if (stream.DataAvailable)
                 {
                     try
@@ -418,25 +410,25 @@
                         switch (type)
                         {
                             case 3: // Message to room
-                                data = ReadWrappedEncMsg(stream, chatClient.cryptor);
+                                data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseChatMsg(data, out source, out dest, out messg); // dest - room
                                 Program.LogEvent(string.Format("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
 
                                 // if user(source) in room(dest)
-                                ChatClient senderUP = (ChatClient)ClientBase[source];
-                                if (senderUP.rooms.Contains(dest))
+                                var senderClient = ClientBase[source];
+                                if (senderClient.Rooms.Contains(dest))
                                 {
-                                    RoomParams roomParams = (RoomParams)RoomBase[dest];
-                                    foreach (string roomUsr in roomParams.users)
+                                    var roomParams = (RoomParams)RoomBase[dest];
+                                    foreach (string roomUsr in roomParams.Users)
                                     {
-                                        ChatClient destUP = (ChatClient)ClientBase[roomUsr];
-                                        if (destUP.client.Connected)
+                                        var destinationClient = ClientBase[roomUsr];
+                                        if (destinationClient.AtcpClient.Connected)
                                         {
                                             try
                                             {
-                                                NetworkStream destStream = destUP.client.GetStream();
+                                                var destStream = destinationClient.AtcpClient.GetStream();
                                                 destStream.WriteByte(3);
-                                                WriteWrappedEncMsg(destStream, data, destUP.cryptor);
+                                                WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                             }
                                             catch (System.IO.IOException)
                                             {
@@ -453,19 +445,19 @@
 
                                 break;
                             case 4: // Message to user
-                                data = ReadWrappedEncMsg(stream, chatClient.cryptor);
+                                data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseChatMsg(data, out source, out dest, out messg); // dest - user
                                 Program.LogEvent(string.Format("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
-                                if (ClientBase.Contains(dest))
+                                if (ClientBase.ContainsKey(dest))
                                 {
-                                    ChatClient destUP = (ChatClient)ClientBase[dest]; // Destination user parameters
-                                    if (destUP.client.Connected)
+                                    var destinationClient = ClientBase[dest];
+                                    if (destinationClient.AtcpClient.Connected)
                                     {
                                         try
                                         {
-                                            NetworkStream destStream = destUP.client.GetStream();
+                                            var destStream = destinationClient.AtcpClient.GetStream();
                                             destStream.WriteByte(4);
-                                            WriteWrappedEncMsg(destStream, data, destUP.cryptor);
+                                            WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                         }
                                         catch (System.IO.IOException)
                                         {
@@ -481,25 +473,25 @@
 
                                 break;
                             case 5: // Message to All
-                                data = ReadWrappedEncMsg(stream, chatClient.cryptor);
+                                data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
 
                                 // Display to all
                                 ParseChatMsg(data, out source, out dest, out messg);
                                 Program.LogEvent(string.Format("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
-                                foreach (DictionaryEntry destDE in ClientBase)
+                                foreach (var destDE in ClientBase)
                                 {
-                                    ChatClient destUP = (ChatClient)destDE.Value;
-                                    if (destUP.client.Connected)
+                                    var destinationClient = destDE.Value;
+                                    if (destinationClient.AtcpClient.Connected)
                                     {
                                         try
                                         {
-                                            NetworkStream destStream = destUP.client.GetStream();
+                                            var destStream = destinationClient.AtcpClient.GetStream();
                                             destStream.WriteByte(5);
-                                            WriteWrappedEncMsg(destStream, data, destUP.cryptor);
+                                            WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                         }
                                         catch (System.IO.IOException)
                                         {
-                                            clientsToFree.Add((string)destDE.Key);
+                                            clientsToFree.Add(destDE.Key);
                                         }
                                     }
                                 }
@@ -507,7 +499,7 @@
                                 break;
                             case 6: // Join Room
                                 string room, pass;
-                                data = ReadWrappedEncMsg(stream, chatClient.cryptor);
+                                data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseJoinRoomMsg(data, out room, out pass);
                                 if (RoomExist(room))
                                 {
@@ -605,7 +597,7 @@
 
         private static bool IsLogged(string login)
         {
-            return ClientBase.Contains(login);
+            return ClientBase.ContainsKey(login);
         }
 
         private static bool AddRoom(string room, string pass)
@@ -613,7 +605,7 @@
             if (!RoomBase.Contains(room))
             {
                 RoomParams newrp = new RoomParams();
-                newrp.password = pass;
+                newrp.Password = pass;
                 RoomBase.Add(room, newrp);
                 return true;
             }
@@ -625,8 +617,8 @@
 
         private static void AddUserToRoom(string room, string login)
         {
-            ((ChatClient)ClientBase[login]).rooms.Add(room);
-            ((RoomParams)RoomBase[room]).users.Add(login);
+            ((ChatClient)ClientBase[login]).Rooms.Add(room);
+            ((RoomParams)RoomBase[room]).Users.Add(login);
         }
 
         private static void removeClient(string login)
@@ -636,8 +628,8 @@
             foreach (DictionaryEntry de in RoomBase)
             {
                 RoomParams rp = (RoomParams)de.Value;
-                rp.users.Remove(login);
-                if (rp.users.Count == 0)
+                rp.Users.Remove(login);
+                if (rp.Users.Count == 0)
                 {
                     roomsToFree.Add((string)de.Key);
                 }
@@ -653,8 +645,8 @@
 
         private static void RemoveClientFromRoom(string login, string room)
         {
-            ((ChatClient)ClientBase[login]).rooms.Remove(room);
-            ((RoomParams)RoomBase[room]).users.Remove(login);
+            ((ChatClient)ClientBase[login]).Rooms.Remove(room);
+            ((RoomParams)RoomBase[room]).Users.Remove(login);
         }
 
         // static void cleanupRooms()
@@ -675,7 +667,7 @@
 
         private static bool confirmRoomPass(string room, string pass)
         {
-            return ((RoomParams)RoomBase[room]).password == pass;
+            return ((RoomParams)RoomBase[room]).Password == pass;
         }
 
         #endregion
@@ -774,7 +766,7 @@
             RoomParams roomParams = (RoomParams)RoomBase[room];
 
             // foreach (string roomUsr in roomParams.users)
-            List<string> users = roomParams.users;
+            List<string> users = roomParams.Users;
 
             int i, n = users.Count;
 
@@ -912,16 +904,6 @@
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
             stream.Write(data, 0, data.Length);
-        }
-
-        #endregion
-
-        #region Signing
-
-        private static void InitStaticDSA()
-        {
-            staticDsaServerSigner = new ECDSAWrapper(1, true, StaticServerPrivKey);
-            staticDsaClientChecker = new ECDSAWrapper(1, false, StaticClientPubKey);
         }
 
         #endregion

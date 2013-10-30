@@ -13,11 +13,23 @@
         /// <summary>
         /// Must be list of unique
         /// </summary>
-        public List<string> rooms = new List<string>(3);
+        private readonly List<string> rooms = new List<string>(3);
+
+        public List<string> Rooms
+        {
+            get
+            {
+                return this.rooms;
+            }
+        }
+
+        public TcpClient AtcpClient { get; set; }
         
-        public TcpClient client = null;
-        
-        public AESCSPImpl cryptor;
+        public AESCSPImpl Cryptor { get; set; }
+
+        public string Login { get; set; }
+
+
 
         /// <summary>
         /// TODO: use this
@@ -27,7 +39,7 @@
         ////    byte[] bytes;
         ////    System.Net.IPAddress ipAddress = Utils.TCPClient2IPAddress(client);
         ////    Program.LogEvent(string.Format("Connected from {0}", ipAddress));
-        ////    NetworkStream stream = client.GetStream();
+        ////    NetworkStream stream = AtcpClient.GetStream();
         ////    stream.ReadTimeout = 1000;
         ////    try
         ////    {
