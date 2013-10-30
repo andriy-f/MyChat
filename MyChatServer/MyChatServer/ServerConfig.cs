@@ -132,7 +132,7 @@ namespace MyChatServer
  
         private void stopServerAndExit()
         {
-            ChatServer.finish();
+            ChatServer.Finish();
             Application.Exit();
         }
 
