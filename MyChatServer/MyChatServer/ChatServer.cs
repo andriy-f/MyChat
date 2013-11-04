@@ -181,7 +181,7 @@
                                     {
                                         if (IsLogged(login))
                                         {
-                                            var oldUserParams = (ChatClient)ClientBase[login];
+                                            var oldUserParams = ClientBase[login];
                                             int oldresp = -2;
                                             if (oldUserParams.Tcp.Connected)
                                             {
@@ -288,12 +288,6 @@
 
                 // Ban IP ipAddress...
             }
-        }
-
-        private static void SendData2Stream(NetworkStream stream, byte type, byte[] data)
-        {
-            stream.WriteByte(type);
-            WriteWrappedMsg(stream, data);
         }
 
         #endregion
