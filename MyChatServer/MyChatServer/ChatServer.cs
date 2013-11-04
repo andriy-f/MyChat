@@ -99,19 +99,19 @@
 
         public static void Listen()
         {
-            TcpListener server = null;
+            TcpListener tcpListener = null;
             try
             {
                 int port = Properties.Settings.Default.Port;
                 var localAddr = IPAddress.Any; // System.Net.IPAddress.Parse("127.0.0.1");
-                server = new TcpListener(localAddr, port);
-                server.Start();
+                tcpListener = new TcpListener(localAddr, port);
+                tcpListener.Start();
+                
                 while (continueToListen)
                 {
-                    if (server.Pending())
+                    if (tcpListener.Pending())
                     {
-                        var client = server.AcceptTcpClient();
-                        ProcessPendingConnection(client);
+                        ProcessPendingConnection(tcpListener.AcceptTcpClient());
                     }
                     else
                     {
@@ -141,9 +141,9 @@
             }
             finally
             {
-                if (server != null)
+                if (tcpListener != null)
                 {
-                    server.Stop();
+                    tcpListener.Stop();
                 }
 
                 Program.LogEvent("Listening finished");
@@ -152,144 +152,139 @@
 
         private static void ProcessPendingConnection(TcpClient client)
         {
-            var ipAddress = Utils.TCPClient2IPAddress(client);
-            Program.LogEvent(string.Format("Connected from {0}", ipAddress));
+            var clientIPAddress = Utils.TCPClient2IPAddress(client);
+            Program.LogEvent(string.Format("Connected from {0}", clientIPAddress));
             var stream = client.GetStream();
             stream.ReadTimeout = 1000;
+
             try
             {
                 var chatClient = new ChatClient();
                 chatClient.AtcpClient = client;
-                int authatt = chatClient.ProcessAuth();
-                if (authatt == 0)
+                int authatt = chatClient.Verify();
+                switch (authatt)
                 {
-                    AESCSPImpl cryptor;
-                    if (ProcessAgreement(stream, out cryptor) == 0)
-                    {
-                        var type = (byte)stream.ReadByte();
-                        string login, pass;
-                        byte[] bytes;
-                        switch (type)
+                    case 0:
+                        AESCSPImpl cryptor;
+                        if (ProcessAgreement(stream, out cryptor) == 0)
                         {
-                            case 0:
+                            var type = (byte)stream.ReadByte();
+                            string login, pass;
+                            byte[] bytes;
+                            switch (type)
+                            {
+                                case 0:
 
-                                // Logon attempt
-                                bytes = ReadWrappedEncMsg(stream, cryptor);
-                                ParseLogonMsg(bytes, out login, out pass);
-                                if (dataGetter.ValidateLoginPass(login, pass))
-                                {
-                                    if (IsLogged(login))
+                                    // Logon attempt
+                                    bytes = ReadWrappedEncMsg(stream, cryptor);
+                                    ParseLogonMsg(bytes, out login, out pass);
+                                    if (dataGetter.ValidateLoginPass(login, pass))
                                     {
-                                        var oldUserParams = (ChatClient)ClientBase[login];
-                                        int oldresp = -2;
-                                        if (oldUserParams.AtcpClient.Connected)
+                                        if (IsLogged(login))
                                         {
-                                            NetworkStream oldStream = oldUserParams.AtcpClient.GetStream();
-
-                                            try
+                                            var oldUserParams = (ChatClient)ClientBase[login];
+                                            int oldresp = -2;
+                                            if (oldUserParams.AtcpClient.Connected)
                                             {
-                                                oldStream.WriteByte(10);
-                                                oldresp = oldStream.ReadByte();
-                                            }
-                                            catch (System.IO.IOException)
-                                            {
-                                                // Timeout - old client probably dead
-                                            }
-                                        }
+                                                NetworkStream oldStream = oldUserParams.AtcpClient.GetStream();
 
-                                        if (oldresp == 10)
-                                        {
-                                            // Client with login <login> still alive -> new login attempt invalid
-                                            stream.WriteByte(1);
-                                            FreeTCPClient(client);
-                                            Program.LogEvent(
-                                                string.Format(
-                                                    "Logon from IP '{0}' failed: User '{1}' already logged on", 
-                                                    ipAddress, 
-                                                    login));
+                                                try
+                                                {
+                                                    oldStream.WriteByte(10);
+                                                    oldresp = oldStream.ReadByte();
+                                                }
+                                                catch (System.IO.IOException)
+                                                {
+                                                    // Timeout - old client probably dead
+                                                }
+                                            }
+
+                                            if (oldresp == 10)
+                                            {
+                                                // Client with login <login> still alive -> new login attempt invalid
+                                                stream.WriteByte(1);
+                                                FreeTCPClient(client);
+                                                Program.LogEvent(
+                                                    string.Format(
+                                                        "Logon from IP '{0}' failed: User '{1}' already logged on", 
+                                                        clientIPAddress, 
+                                                        login));
+                                            }
+                                            else
+                                            {
+                                                // old client with login <login> dead -> dispose of him and connect new
+                                                FreeTCPClient(oldUserParams.AtcpClient);
+                                                removeClient(login);
+                                                ProcessAndAcceptNewClient(client, login, cryptor);
+                                                Program.LogEvent(
+                                                    string.Format(
+                                                        "Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)", 
+                                                        clientIPAddress, 
+                                                        login));
+                                            }
                                         }
                                         else
                                         {
-                                            // old client with login <login> dead -> dispose of him and connect new
-                                            FreeTCPClient(oldUserParams.AtcpClient);
-                                            removeClient(login);
                                             ProcessAndAcceptNewClient(client, login, cryptor);
                                             Program.LogEvent(
                                                 string.Format(
-                                                    "Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)", 
-                                                    ipAddress, 
+                                                    "Logon from IP '{0}' success: User '{1}' from IP  logged on", 
+                                                    clientIPAddress, 
                                                     login));
                                         }
                                     }
                                     else
                                     {
-                                        ProcessAndAcceptNewClient(client, login, cryptor);
+                                        stream.WriteByte(2);
+                                        FreeTCPClient(client);
                                         Program.LogEvent(
                                             string.Format(
-                                                "Logon from IP '{0}' success: User '{1}' from IP  logged on", 
-                                                ipAddress, 
+                                                "Logon from IP '{0}' failed: Login '{1}'//Password not recognized", 
+                                                clientIPAddress, 
                                                 login));
                                     }
-                                }
-                                else
-                                {
-                                    stream.WriteByte(2);
+
+                                    break;
+                                case 1:
+
+                                    // Registration without logon
+                                    bytes = ReadWrappedEncMsg(stream, cryptor);
+                                    ParseLogonMsg(bytes, out login, out pass);
+                                    if (!dataGetter.ValidateLogin(login))
+                                    {
+                                        dataGetter.AddNewLoginPass(login, pass);
+                                        stream.WriteByte(0);
+                                        Program.LogEvent(
+                                            string.Format("Registration success: User '{0}' registered", login));
+                                    }
+                                    else
+                                    {
+                                        stream.WriteByte(1);
+                                        Program.LogEvent(
+                                            string.Format("Registration failed: User '{0}' already registered", login));
+                                    }
+
                                     FreeTCPClient(client);
-                                    Program.LogEvent(
-                                        string.Format(
-                                            "Logon from IP '{0}' failed: Login '{1}'//Password not recognized", 
-                                            ipAddress, 
-                                            login));
-                                }
+                                    break;
+                                default:
 
-                                break;
-                            case 1:
-
-                                // Registration without logon
-                                bytes = ReadWrappedEncMsg(stream, cryptor);
-                                ParseLogonMsg(bytes, out login, out pass);
-                                if (!dataGetter.ValidateLogin(login))
-                                {
-                                    dataGetter.AddNewLoginPass(login, pass);
-                                    stream.WriteByte(0);
-                                    Program.LogEvent(
-                                        string.Format("Registration success: User '{0}' registered", login));
-                                }
-                                else
-                                {
-                                    stream.WriteByte(1);
-                                    Program.LogEvent(
-                                        string.Format("Registration failed: User '{0}' already registered", login));
-                                }
-
-                                FreeTCPClient(client);
-                                break;
-                            default:
-
-                                // Wrong data received
-                                throw new Exception();
+                                    // Wrong data received
+                                    throw new Exception();
+                            }
                         }
-                    }
-                }
-                else if (authatt == 1)
-                {
-                    FreeTCPClient(client);
-                    Program.LogEvent(string.Format("Auth from IP '{0}' fail because client is not legit", ipAddress));
 
-                    // Ban IP...
-                }
-                else
-                {
-                    FreeTCPClient(client);
-                    Program.LogEvent(
-                        string.Format(
-                            "Auth from IP '{0}' fail because error. See previous message for details", 
-                            ipAddress));
+                        break;
+                    case 1:
+                        FreeTCPClient(client);
+                        Program.LogEvent(string.Format("Auth from IP '{0}' fail because client is not legit", clientIPAddress));
+                        
+                        // TODO: Ban IP if too many attempts...
+                        break;
                 }
             }
             catch (Exception ex)
             {
-                Program.LogException(new Exception(string.Format("New connetion from IP {0} failed", ipAddress), ex));
+                Program.LogException(new Exception(string.Format("New connetion from IP {0} failed", clientIPAddress), ex));
                 FreeTCPClient(client);
 
                 // Ban IP ipAddress...

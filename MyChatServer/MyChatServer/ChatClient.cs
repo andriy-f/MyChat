@@ -154,17 +154,17 @@
         /// <summary>
         /// Processes authentification attempt from new client
         /// </summary> 
-        /// <returns>0 if ok, 1 if wrong, 2 if exception</returns>
-        internal int ProcessAuth()
+        /// <returns>0 if ok, 1 if wrong</returns>
+        internal int Verify()
         {
             try
             {
                 var stream = this.AtcpClient.GetStream();
                 
                 // Check if client is legit
-                byte[] send = Randoms.genSecureRandomBytes(100);
+                var send = Randoms.genSecureRandomBytes(100);
                 ChatServer.WriteWrappedMsg(stream, send);
-                byte[] rec = ChatServer.ReadWrappedMsg(stream);
+                var rec = ChatServer.ReadWrappedMsg(stream);
 
                 // Program.LogEvent(HexRep.ToString(rec));
                 bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
@@ -184,7 +184,7 @@
             catch (Exception ex)
             {
                 Program.LogEvent(string.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
-                return 2;
+                return 1;
             }
         }
     }

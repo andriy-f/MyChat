@@ -7,9 +7,11 @@ namespace System.Security.Cryptography
 {
     internal class MyRandoms
     {
-        private Random _simpleRandom = new Random();
-        private RNGCryptoServiceProvider _rngCsp = new RNGCryptoServiceProvider();
-        private Org.BouncyCastle.Security.SecureRandom _secureRandom = new Org.BouncyCastle.Security.SecureRandom();
+        private readonly Random simpleRandom = new Random();
+        
+        private readonly RNGCryptoServiceProvider rngCsp = new RNGCryptoServiceProvider();
+        
+        private readonly Org.BouncyCastle.Security.SecureRandom secureRandom = new Org.BouncyCastle.Security.SecureRandom();
         
         /// <summary>
         /// Generates random byte array of set length
@@ -18,8 +20,8 @@ namespace System.Security.Cryptography
         /// <returns>random byte array of set length</returns>
         public byte[] genRandomBytes(int len)
         {
-            byte[] bytes = new byte[len];
-            _simpleRandom.NextBytes(bytes);
+            var bytes = new byte[len];
+            this.simpleRandom.NextBytes(bytes);
             return bytes;
         }
 
@@ -30,8 +32,8 @@ namespace System.Security.Cryptography
         /// <returns>random byte array of set length</returns>
         public byte[] genSecureRandomBytesNative(int len)
         {
-            byte[] bytes = new byte[len];
-            _rngCsp.GetBytes(bytes);
+            var bytes = new byte[len];
+            this.rngCsp.GetBytes(bytes);
             return bytes;
         }
 
@@ -42,8 +44,8 @@ namespace System.Security.Cryptography
         /// <returns>secure random byte array of set length</returns>
         public byte[] genSecureRandomBytes(int len)
         {
-            byte[] bytes = new byte[len];
-            _secureRandom.NextBytes(bytes);
+            var bytes = new byte[len];
+            this.secureRandom.NextBytes(bytes);
             return bytes;
         }
     }
