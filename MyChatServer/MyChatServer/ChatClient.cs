@@ -18,6 +18,11 @@
         /// Must be list of unique
         /// </summary>
         private readonly List<string> rooms = new List<string>(3);
+        
+        public ChatClient(TcpClient client)
+        {
+            this.Tcp = client;
+        }
 
         public List<string> Rooms
         {
@@ -27,7 +32,7 @@
             }
         }
 
-        public TcpClient AtcpClient { get; set; }
+        public TcpClient Tcp { get; set; }
         
         public AESCSPImpl Cryptor { get; set; }
 
@@ -159,7 +164,7 @@
         {
             try
             {
-                var stream = this.AtcpClient.GetStream();
+                var stream = this.Tcp.GetStream();
                 
                 // Check if client is legit
                 var send = Randoms.genSecureRandomBytes(100);
@@ -186,6 +191,14 @@
                 Program.LogEvent(string.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
                 return 1;
             }
+        }
+
+        public enum Status
+        {
+            Uninitialized,
+            Validated,
+            Encrypted,
+            LoggedOn
         }
     }
 }

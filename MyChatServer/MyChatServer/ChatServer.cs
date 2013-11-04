@@ -159,8 +159,7 @@
 
             try
             {
-                var chatClient = new ChatClient();
-                chatClient.AtcpClient = client;
+                var chatClient = new ChatClient(client);
                 int authatt = chatClient.Verify();
                 switch (authatt)
                 {
@@ -184,9 +183,9 @@
                                         {
                                             var oldUserParams = (ChatClient)ClientBase[login];
                                             int oldresp = -2;
-                                            if (oldUserParams.AtcpClient.Connected)
+                                            if (oldUserParams.Tcp.Connected)
                                             {
-                                                NetworkStream oldStream = oldUserParams.AtcpClient.GetStream();
+                                                NetworkStream oldStream = oldUserParams.Tcp.GetStream();
 
                                                 try
                                                 {
@@ -213,7 +212,7 @@
                                             else
                                             {
                                                 // old client with login <login> dead -> dispose of him and connect new
-                                                FreeTCPClient(oldUserParams.AtcpClient);
+                                                FreeTCPClient(oldUserParams.Tcp);
                                                 removeClient(login);
                                                 ProcessAndAcceptNewClient(client, login, cryptor);
                                                 Program.LogEvent(
@@ -303,10 +302,9 @@
 
         internal static void ProcessAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
         {
-            var newUP = new ChatClient();
-            newUP.AtcpClient = client;
-            newUP.Cryptor = cryptor1;
-            ClientBase.Add(login, newUP);
+            var chatClient = new ChatClient(client);
+            chatClient.Cryptor = cryptor1;
+            ClientBase.Add(login, chatClient);
             client.GetStream().WriteByte(0);
         }
 
@@ -372,7 +370,7 @@
 
         private static void ProcessCurrentConnection(ChatClient chatClient)
         {
-            TcpClient client = chatClient.AtcpClient;
+            TcpClient client = chatClient.Tcp;
             if (client != null && client.Connected)
             {
                 string clientLogin = chatClient.Login;
@@ -400,11 +398,11 @@
                                     foreach (string roomUsr in roomParams.Users)
                                     {
                                         var destinationClient = ClientBase[roomUsr];
-                                        if (destinationClient.AtcpClient.Connected)
+                                        if (destinationClient.Tcp.Connected)
                                         {
                                             try
                                             {
-                                                var destStream = destinationClient.AtcpClient.GetStream();
+                                                var destStream = destinationClient.Tcp.GetStream();
                                                 destStream.WriteByte(3);
                                                 WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                             }
@@ -429,11 +427,11 @@
                                 if (ClientBase.ContainsKey(dest))
                                 {
                                     var destinationClient = ClientBase[dest];
-                                    if (destinationClient.AtcpClient.Connected)
+                                    if (destinationClient.Tcp.Connected)
                                     {
                                         try
                                         {
-                                            var destStream = destinationClient.AtcpClient.GetStream();
+                                            var destStream = destinationClient.Tcp.GetStream();
                                             destStream.WriteByte(4);
                                             WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                         }
@@ -459,11 +457,11 @@
                                 foreach (var destDE in ClientBase)
                                 {
                                     var destinationClient = destDE.Value;
-                                    if (destinationClient.AtcpClient.Connected)
+                                    if (destinationClient.Tcp.Connected)
                                     {
                                         try
                                         {
-                                            var destStream = destinationClient.AtcpClient.GetStream();
+                                            var destStream = destinationClient.Tcp.GetStream();
                                             destStream.WriteByte(5);
                                             WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                         }
