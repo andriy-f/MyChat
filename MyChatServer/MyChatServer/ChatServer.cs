@@ -28,20 +28,18 @@
         private static readonly Dictionary<string, ChatClient> ClientBase = new Dictionary<string, ChatClient>(10); // login/ChatClient
 
         private static readonly Hashtable RoomBase = new Hashtable(3); // room/RoomParams
-
         
-
         private static readonly byte[] Iv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
         private static readonly MyRandoms Randoms = new MyRandoms();
 
+        private static readonly List<string> ClientsToFree = new List<string>(5);
+
+        private static readonly List<string> RoomsToFree = new List<string>(5);
+
         private static Thread listenerThread;
 
         private static DataGetter dataGetter;
-
-        private static readonly List<string> clientsToFree = new List<string>(5);
-
-        private static readonly List<string> roomsToFree = new List<string>(5);
 
         private static bool continueToListen = true;
 
@@ -105,7 +103,7 @@
             try
             {
                 int port = Properties.Settings.Default.Port;
-                IPAddress localAddr = IPAddress.Any; // System.Net.IPAddress.Parse("127.0.0.1");
+                var localAddr = IPAddress.Any; // System.Net.IPAddress.Parse("127.0.0.1");
                 server = new TcpListener(localAddr, port);
                 server.Start();
                 while (continueToListen)
@@ -125,12 +123,12 @@
                         }
 
                         // free resources from logout of clients
-                        foreach (var flogin in clientsToFree)
+                        foreach (var flogin in ClientsToFree)
                         {
                             removeClient(flogin);
                         }
 
-                        clientsToFree.Clear();
+                        ClientsToFree.Clear();
 
                         // Free unocupied rooms - deprecated because of saving room params (password)
                         // cleanupRooms();
@@ -147,6 +145,7 @@
                 {
                     server.Stop();
                 }
+
                 Program.LogEvent("Listening finished");
             }
         }
@@ -155,11 +154,13 @@
         {
             var ipAddress = Utils.TCPClient2IPAddress(client);
             Program.LogEvent(string.Format("Connected from {0}", ipAddress));
-            NetworkStream stream = client.GetStream();
+            var stream = client.GetStream();
             stream.ReadTimeout = 1000;
             try
             {
-                int authatt = ProcessAuth(stream);
+                var chatClient = new ChatClient();
+                chatClient.AtcpClient = client;
+                int authatt = chatClient.ProcessAuth();
                 if (authatt == 0)
                 {
                     AESCSPImpl cryptor;
@@ -307,7 +308,7 @@
 
         internal static void ProcessAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
         {
-            ChatClient newUP = new ChatClient();
+            var newUP = new ChatClient();
             newUP.AtcpClient = client;
             newUP.Cryptor = cryptor1;
             ClientBase.Add(login, newUP);
@@ -319,36 +320,36 @@
         /// </summary>
         /// <param name="stream"></param>
         /// <returns>0 if ok, 1 if wrong, 2 if exception</returns>
-        internal static int ProcessAuth(NetworkStream stream)
-        {
-            try
-            {
-                // Check if client is legit
-                byte[] send = Randoms.genSecureRandomBytes(100);
-                WriteWrappedMsg(stream, send);
-                byte[] rec = ReadWrappedMsg(stream);
+        ////internal static int ProcessAuth(NetworkStream stream)
+        ////{
+        ////    try
+        ////    {
+        ////        // Check if client is legit
+        ////        byte[] send = Randoms.genSecureRandomBytes(100);
+        ////        WriteWrappedMsg(stream, send);
+        ////        byte[] rec = ReadWrappedMsg(stream);
 
-                // Program.LogEvent(HexRep.ToString(rec));
-                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
-                if (clientLegit)
-                {
-                    // Clients want to know if server is legit
-                    rec = ReadWrappedMsg(stream);
-                    send = Crypto.Utils.ServerSigner.signHash(rec);
-                    WriteWrappedMsg(stream, send);
-                    return 0;
-                }
-                else
-                {
-                    return 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                Program.LogEvent(string.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
-                return 2;
-            }
-        }
+        ////        // Program.LogEvent(HexRep.ToString(rec));
+        ////        bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
+        ////        if (clientLegit)
+        ////        {
+        ////            // Clients want to know if server is legit
+        ////            rec = ReadWrappedMsg(stream);
+        ////            send = Crypto.Utils.ServerSigner.signHash(rec);
+        ////            WriteWrappedMsg(stream, send);
+        ////            return 0;
+        ////        }
+        ////        else
+        ////        {
+        ////            return 1;
+        ////        }
+        ////    }
+        ////    catch (Exception ex)
+        ////    {
+        ////        Program.LogEvent(string.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
+        ////        return 2;
+        ////    }
+        ////}
 
         internal static int ProcessAgreement(NetworkStream stream, out AESCSPImpl cryptor)
         {
@@ -414,7 +415,7 @@
                                             }
                                             catch (System.IO.IOException)
                                             {
-                                                clientsToFree.Add(roomUsr);
+                                                ClientsToFree.Add(roomUsr);
                                             }
                                         }
                                     }
@@ -443,7 +444,7 @@
                                         }
                                         catch (System.IO.IOException)
                                         {
-                                            clientsToFree.Add(dest);
+                                            ClientsToFree.Add(dest);
                                         }
                                     }
                                 }
@@ -473,7 +474,7 @@
                                         }
                                         catch (System.IO.IOException)
                                         {
-                                            clientsToFree.Add(destDE.Key);
+                                            ClientsToFree.Add(destDE.Key);
                                         }
                                     }
                                 }
@@ -527,7 +528,7 @@
                                 stream.WriteByte(0); // approve - need?
 
                                 // Free Resources
-                                clientsToFree.Add(clientLogin);
+                                ClientsToFree.Add(clientLogin);
                                 FreeTCPClient(client);
                                 Program.LogEvent(string.Format("Client '{0}' performed Logout", clientLogin));
                                 break;
@@ -566,7 +567,7 @@
                                 clientLogin, 
                                 Utils.TCPClient2IPAddress(client), 
                                 ex));
-                        clientsToFree.Add(clientLogin);
+                        ClientsToFree.Add(clientLogin);
                         FreeTCPClient(client);
                     }
                 }
@@ -613,16 +614,16 @@
                 rp.Users.Remove(login);
                 if (rp.Users.Count == 0)
                 {
-                    roomsToFree.Add((string)de.Key);
+                    RoomsToFree.Add((string)de.Key);
                 }
             }
 
-            foreach (string froom in roomsToFree)
+            foreach (string froom in RoomsToFree)
             {
                 RoomBase.Remove(froom);
             }
 
-            roomsToFree.Clear();
+            RoomsToFree.Clear();
         }
 
         private static void RemoveClientFromRoom(string login, string room)

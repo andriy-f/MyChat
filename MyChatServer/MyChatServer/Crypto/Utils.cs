@@ -30,6 +30,12 @@ namespace MyChatServer.Crypto
 
         private static ECDSAWrapper serverSigner; // signs with staticServerPrivKey
 
+        static Utils()
+        {
+            serverSigner = new ECDSAWrapper(1, true, StaticServerPrivKey);
+            clientVerifier = new ECDSAWrapper(1, false, StaticClientPubKey);
+        }
+
         public static ECDSAWrapper ClientVerifier
         {
             get
@@ -44,12 +50,6 @@ namespace MyChatServer.Crypto
             {
                 return serverSigner;
             }
-        }
-
-        static Utils()
-        {
-            serverSigner = new ECDSAWrapper(1, true, StaticServerPrivKey);
-            clientVerifier = new ECDSAWrapper(1, false, StaticClientPubKey);
         }
     }
 }

@@ -12,7 +12,7 @@
     /// </summary>
     public class ChatClient
     {
-        private static readonly MyRandoms Randoms = new MyRandoms(); // TODO: use server one
+        private static readonly MyRandoms Randoms = new MyRandoms();
 
         /// <summary>
         /// Must be list of unique
