@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace System.Security.Cryptography
+﻿namespace Andriy.Security.Cryptography
 {
+    using System;
+    using System.Security.Cryptography;
+
     internal class MyRandoms
     {
         private readonly Random simpleRandom = new Random();

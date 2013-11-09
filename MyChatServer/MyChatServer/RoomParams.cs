@@ -1,4 +1,4 @@
-﻿namespace MyChatServer
+﻿namespace Andriy.MyChat.Server
 {
     using System.Collections.Generic;
 

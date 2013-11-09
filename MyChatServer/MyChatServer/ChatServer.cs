@@ -1,21 +1,15 @@
-﻿namespace MyChatServer
+﻿namespace Andriy.MyChat.Server
 {
     using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Net;
     using System.Net.Sockets;
-    using System.Security.Cryptography;
-    using System.Text;
     using System.Threading;
 
-    using CustomCrypto;
-
-    using My.Cryptography;
-
-    using MyChatServer.DAL;
+    using Andriy.MyChat.Server.DAL;
+    using Andriy.Security.Cryptography;
 
     public class ChatServer
     {

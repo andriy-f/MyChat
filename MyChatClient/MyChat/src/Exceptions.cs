@@ -9,13 +9,14 @@
  *
  ************************************************************/
 
-using System;
 //using System.Collections.Generic;
 //using System.Linq;
 //using System.Text;
 
-namespace MyChat
+namespace Andriy.MyChat.Client
 {
+    using System;
+
     class ChatClientException:Exception
     {
         public ChatClientException( string msg ) : base( msg )

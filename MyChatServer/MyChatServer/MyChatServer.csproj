@@ -8,7 +8,7 @@
     <ProjectGuid>{FF5A1224-AE47-4FCF-97D7-C2C7E13DEB26}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MyChatServer</RootNamespace>
+    <RootNamespace>Andriy.MyChat.Server</RootNamespace>
     <AssemblyName>MyChatServer</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -93,18 +93,20 @@
     </Compile>
     <Compile Include="ChatClient.cs" />
     <Compile Include="ChatServer.cs" />
+    <Compile Include="..\..\_Common\src\Crypto\CryptoCmn.cs">
+      <Link>Crypto\CryptoCmn.cs</Link>
+    </Compile>
     <Compile Include="ChatServerDataSet.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
     </Compile>
-    <Compile Include="..\..\_Common\src\Crypto\CryptoCmn.cs">
-      <Link>Crypto\CryptoCmn.cs</Link>
-    </Compile>
     <Compile Include="Consts.cs" />
     <Compile Include="Crypto\Utils.cs" />
     <Compile Include="DAL\DataGetter.cs" />
-    <Compile Include="DAL\MSSQLDataGetter.cs" />
+    <Compile Include="DAL\MSSQLDataGetter.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="DAL\PredefinedDataGetter.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
@@ -143,9 +145,9 @@
       <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
     </None>
     <None Include="ChatServerDataSet.xsd">
+      <SubType>Designer</SubType>
       <Generator>MSDataSetGenerator</Generator>
       <LastGenOutput>ChatServerDataSet.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
     </None>
     <None Include="ChatServerDataSet.xss">
       <DependentUpon>ChatServerDataSet.xsd</DependentUpon>

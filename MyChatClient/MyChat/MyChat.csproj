@@ -8,7 +8,7 @@
     <ProjectGuid>{ECA43105-E7EA-4C9C-9027-89F33F8B95D9}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MyChat</RootNamespace>
+    <RootNamespace>Andriy.MyChat.Client</RootNamespace>
     <AssemblyName>MyChat</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

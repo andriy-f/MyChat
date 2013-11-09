@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-namespace MyChatServer
+﻿namespace Andriy.MyChat.Server
 {
-    using System.Globalization;
+    using System;
     using System.Windows.Forms;
-    using System.IO;
 
-    using My.Cryptography;
+    using Andriy.Security.Cryptography;
 
     static class Program
     {

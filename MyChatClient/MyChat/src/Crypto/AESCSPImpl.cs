@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-
-namespace System.Security.Cryptography
+﻿namespace Andriy.MyChat.Client.Crypto
 {
+    using System;
+    using System.IO;
+    using System.Security.Cryptography;
+
     public class AESCSPImpl
     {
         #region Fields
@@ -25,7 +23,7 @@ namespace System.Security.Cryptography
             //byte[] key = keyGenerator.GetBytes(16);
             //byte[] iv = keyGenerator.GetBytes(16);
             
-            aes = new AesCryptoServiceProvider();
+            this.aes = new AesCryptoServiceProvider();
             //aes.Key = key;
             //aes.IV = iv;            
         }
@@ -36,15 +34,15 @@ namespace System.Security.Cryptography
                 throw new ArgumentNullException("newKey");
             if (newIV == null || newIV.Length <= 0)
                 throw new ArgumentNullException("newIV");            
-            aes = new AesCryptoServiceProvider();
-            aes.Key = newKey;
-            aes.IV = newIV;            
+            this.aes = new AesCryptoServiceProvider();
+            this.aes.Key = newKey;
+            this.aes.IV = newIV;            
         }
 
         public void Clear()
         {
-            if (aes != null)
-                aes.Clear();
+            if (this.aes != null)
+                this.aes.Clear();
         }          
 
         #endregion
@@ -61,7 +59,7 @@ namespace System.Security.Cryptography
 
             using (MemoryStream msEncrypt = new MemoryStream())//--> Encrypted data
             {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, aes.CreateEncryptor(), CryptoStreamMode.Write))//<-- plain data
+                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, this.aes.CreateEncryptor(), CryptoStreamMode.Write))//<-- plain data
                 {
                     csEncrypt.Write(byteArray, 0, byteArray.Length);
                 }
@@ -81,7 +79,7 @@ namespace System.Security.Cryptography
 
             using (MemoryStream msDecrypt = new MemoryStream())//--> Decrypted data
             {
-                using (CryptoStream cs = new CryptoStream(msDecrypt, aes.CreateDecryptor(), CryptoStreamMode.Write))//<-- Encrypted data
+                using (CryptoStream cs = new CryptoStream(msDecrypt, this.aes.CreateDecryptor(), CryptoStreamMode.Write))//<-- Encrypted data
                 {
                     cs.Write(cipherText, 0, cipherText.Length);
                 }
@@ -105,7 +103,7 @@ namespace System.Security.Cryptography
             byte[] res = null;
             using (MemoryStream msEncrypt = new MemoryStream())//--> encrypted data
             {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, aes.CreateEncryptor(), CryptoStreamMode.Write))//<--plain data
+                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, this.aes.CreateEncryptor(), CryptoStreamMode.Write))//<--plain data
                 {
                     using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))//<-- plain data(string)  
                     {
@@ -126,7 +124,7 @@ namespace System.Security.Cryptography
             string res = null;
             using (MemoryStream msDecrypt = new MemoryStream(cipherText))//<-- encrypted data
             {
-                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, aes.CreateDecryptor(), CryptoStreamMode.Read))//--> decrypted data
+                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, this.aes.CreateDecryptor(), CryptoStreamMode.Read))//--> decrypted data
                 {
                     using (StreamReader srDecrypt = new StreamReader(csDecrypt))//--> decrypted data (string)
                     {

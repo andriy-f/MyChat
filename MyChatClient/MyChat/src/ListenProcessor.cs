@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace MyChat
+﻿namespace Andriy.MyChat.Client
 {
+    using System;
+
     class ListenProcessor
     {
         public int code;//code to wait for
@@ -12,8 +9,8 @@ namespace MyChat
 
         public ListenProcessor(int newcode, Action newtoDo)
         {
-            code = newcode;
-            toDo = newtoDo;
+            this.code = newcode;
+            this.toDo = newtoDo;
         }
     
     }

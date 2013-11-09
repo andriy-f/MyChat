@@ -1,4 +1,4 @@
-﻿namespace MyChatServer.DAL
+﻿namespace Andriy.MyChat.Server.DAL
 {
     using System.Collections.Concurrent;
 

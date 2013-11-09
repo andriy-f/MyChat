@@ -1,52 +1,48 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-//using System.Linq;
-using System.Text;
-using System.Windows.Forms;
+﻿//using System.Linq;
 
-namespace MyChat
+namespace Andriy.MyChat.Client
 {
+    using System;
+    using System.Windows.Forms;
+
     public partial class ChatForm : Form
     {        
         public string room;
 
         public ChatForm()
         {
-            InitializeComponent();            
+            this.InitializeComponent();            
         }
 
         public ChatForm(string lroom)
         {            
-            InitializeComponent();
-            room = lroom;
-            this.Text = String.Format("User '{0}' at room '{1}' on server '{2}'", ChatClient.Login, room, ChatClient.Server);
-            ChatClient.msgProcessor.addProcessor(room, OnReceiveMsg);//Ala event
-            refreshDestination();
+            this.InitializeComponent();
+            this.room = lroom;
+            this.Text = String.Format("User '{0}' at room '{1}' on server '{2}'", ChatClient.Login, this.room, ChatClient.Server);
+            ChatClient.msgProcessor.addProcessor(this.room, this.OnReceiveMsg);//Ala event
+            this.refreshDestination();
         }
 
         public void OnReceiveMsg(string source, string dest, string msg)
         {
-            rtbHistory.AppendText(String.Format("[{0}]->[{1}]: \"{2}\"\n", source, dest, msg));
-            rtbHistory.ScrollToCaret();
+            this.rtbHistory.AppendText(String.Format("[{0}]->[{1}]: \"{2}\"\n", source, dest, msg));
+            this.rtbHistory.ScrollToCaret();
         }
 
         private void bSend_Click(object sender, EventArgs e)
         {
-            if (cbDest.Text == "<Room>")            
-                ChatClient.queueChatMsg(3, room, rtbMsg.Text);
-            else if(cbDest.Text == "<All>")
-                ChatClient.queueChatMsg(5, "All", rtbMsg.Text);
+            if (this.cbDest.Text == "<Room>")            
+                ChatClient.queueChatMsg(3, this.room, this.rtbMsg.Text);
+            else if(this.cbDest.Text == "<All>")
+                ChatClient.queueChatMsg(5, "All", this.rtbMsg.Text);
             else
-                ChatClient.queueChatMsg(4, cbDest.Text, rtbMsg.Text);
-            rtbMsg.Clear();
+                ChatClient.queueChatMsg(4, this.cbDest.Text, this.rtbMsg.Text);
+            this.rtbMsg.Clear();
         }
 
         private void bLeave_Click(object sender, EventArgs e)
         {
-            if (ChatClient.performLeaveRoom(room))            
+            if (ChatClient.performLeaveRoom(this.room))            
                 this.Close();
             else MessageBox.Show("Error while leaving room");
         }
@@ -59,14 +55,14 @@ namespace MyChat
 
         private void refreshDestination()
         {
-            cbDest.Items.Clear();
-            cbDest.Items.Add("<Room>");
-            cbDest.Items.Add("<All>");
-            cbDest.Text = "<Room>";
-            ChatClient.requestRoomUsers(room, () =>
+            this.cbDest.Items.Clear();
+            this.cbDest.Items.Add("<Room>");
+            this.cbDest.Items.Add("<All>");
+            this.cbDest.Text = "<Room>";
+            ChatClient.requestRoomUsers(this.room, () =>
                 {
                     string[] users = ChatClient.getRoomUsers();
-                    refreshDestinationInvoke(users);
+                    this.refreshDestinationInvoke(users);
                 });
         }
 
@@ -74,17 +70,17 @@ namespace MyChat
         {
             if (this.cbDest.InvokeRequired)
             {
-                Action<string[]> act = refreshDestinationInvoke;
+                Action<string[]> act = this.refreshDestinationInvoke;
                 this.Invoke(act, new object[] { users });
             }
             else
             {
-                cbDest.Items.Clear();
-                cbDest.Items.Add("<Room>");
-                cbDest.Items.Add("<All>");
-                cbDest.Text = "<Room>";
+                this.cbDest.Items.Clear();
+                this.cbDest.Items.Add("<Room>");
+                this.cbDest.Items.Add("<All>");
+                this.cbDest.Text = "<Room>";
                 //Add users in room
-                cbDest.Items.AddRange(users);
+                this.cbDest.Items.AddRange(users);
             }
         }
 
@@ -101,7 +97,7 @@ namespace MyChat
 
         private void cbDest_DropDown(object sender, EventArgs e)
         {
-            refreshDestination();
+            this.refreshDestination();
         }
     }
 }

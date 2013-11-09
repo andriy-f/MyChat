@@ -1,29 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using System.Globalization;
-
-namespace MyChatServer
+﻿namespace Andriy.MyChat.Server
 {
+    using System;
+    using System.Globalization;
+    using System.Windows.Forms;
+
     public partial class LogForm : Form
     {
         public LogForm()
         {
-            InitializeComponent();
+            this.InitializeComponent();
         }
 
         public void LogEvent(string msg)
         {
             if (null != msg)
             {
-                tbLog.AppendText(string.Format(CultureInfo.InvariantCulture, "{1} {2}", Environment.NewLine,
+                this.tbLog.AppendText(string.Format(CultureInfo.InvariantCulture, "{1} {2}", Environment.NewLine,
                     DateTime.Now, msg));
-                showMe();
+                this.showMe();
             }
         }
 
@@ -31,9 +25,9 @@ namespace MyChatServer
         {
             if (null != ex)
             {
-                tbLog.AppendText(string.Format(CultureInfo.InvariantCulture, "{1} ERROR{0}{2}", Environment.NewLine,
+                this.tbLog.AppendText(string.Format(CultureInfo.InvariantCulture, "{1} ERROR{0}{2}", Environment.NewLine,
                     DateTime.Now, ex));
-                showMe();
+                this.showMe();
             }
         }
 
@@ -41,7 +35,7 @@ namespace MyChatServer
         {
             //if (WindowState == FormWindowState.Minimized)
             //    WindowState = FormWindowState.Normal;
-            if (Visible == false)
+            if (this.Visible == false)
                 this.Show();
             this.Activate();
         }
@@ -52,7 +46,7 @@ namespace MyChatServer
             {
                 e.Cancel = true;
                 //this.WindowState = FormWindowState.Minimized;
-                Hide();
+                this.Hide();
             }
             else
             {

@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections;
-using System.Linq;
-using System.Text;
-
-namespace MyChat
+﻿namespace Andriy.MyChat.Client
 {
+    using System.Collections;
+
     class MsgProcessor
     {
         public delegate void ReceiveMsgProcessor(string source, string dest, string msg);
@@ -15,19 +11,19 @@ namespace MyChat
             public ReceiveMsgProcessor processor;
 
             public RoomParams(ReceiveMsgProcessor prc)
-            { processor = prc; }
+            { this.processor = prc; }
         }
 
         private Hashtable roomProcessors = new Hashtable(5);//roomName/RoomParams
 
         public int RoomCount
-        { get { return roomProcessors.Count; } }
+        { get { return this.roomProcessors.Count; } }
 
         public bool addProcessor(string room, ReceiveMsgProcessor proc)//When user joins room
         {
-            if (!roomProcessors.Contains(room))
+            if (!this.roomProcessors.Contains(room))
             {
-                roomProcessors.Add(room, new RoomParams(proc));
+                this.roomProcessors.Add(room, new RoomParams(proc));
                 return true;
             }
             else return false;
@@ -35,9 +31,9 @@ namespace MyChat
 
         public bool removeProcessor(string room)//When user leaves room
         {
-            if (roomProcessors.Contains(room))
+            if (this.roomProcessors.Contains(room))
             {
-                roomProcessors.Remove(room);
+                this.roomProcessors.Remove(room);
                 return true;
             }
             else return false;
@@ -45,15 +41,15 @@ namespace MyChat
 
         public void process(string source, string dest, string message)//For user or All
         {
-            foreach (System.Collections.DictionaryEntry de in roomProcessors)
+            foreach (System.Collections.DictionaryEntry de in this.roomProcessors)
                 ((RoomParams)de.Value).processor(source, dest, message);
         }
 
         public bool processForRoom(string source, string dest, string message)//room==dest
         {
-            if (roomProcessors.Contains(dest))
+            if (this.roomProcessors.Contains(dest))
             {
-                ((RoomParams)roomProcessors[dest]).processor(source, dest, message);
+                ((RoomParams)this.roomProcessors[dest]).processor(source, dest, message);
                 return true;
             }
             else return false;

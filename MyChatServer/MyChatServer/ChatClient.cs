@@ -1,11 +1,10 @@
-﻿namespace MyChatServer
+﻿namespace Andriy.MyChat.Server
 {
     using System;
     using System.Collections.Generic;
     using System.Net.Sockets;
-    using System.Security.Cryptography;
 
-    using My.Cryptography;
+    using Andriy.Security.Cryptography;
 
     /// <summary>
     /// client == null -> client incative

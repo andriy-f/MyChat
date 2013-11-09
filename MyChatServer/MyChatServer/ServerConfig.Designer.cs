@@ -1,4 +1,4 @@
-﻿namespace MyChatServer
+﻿namespace Andriy.MyChat.Server
 {
     partial class ServerConfig
     {
@@ -13,9 +13,9 @@
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing && (this.components != null))
             {
-                components.Dispose();
+                this.components.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -32,8 +32,8 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ServerConfig));
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.loginsBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.chatServerDataSet = new MyChatServer.ChatServerDataSet();
-            this.loginsTableAdapter = new MyChatServer.ChatServerDataSetTableAdapters.LoginsTableAdapter();
+            this.chatServerDataSet = new Andriy.MyChat.Server.ChatServerDataSet();
+            this.loginsTableAdapter = new Andriy.MyChat.Server.ChatServerDataSetTableAdapters.LoginsTableAdapter();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tpGeneral = new System.Windows.Forms.TabPage();
             this.nudPort = new System.Windows.Forms.NumericUpDown();
@@ -404,7 +404,7 @@
         private System.Windows.Forms.NotifyIcon notifyIcon1;
         private ChatServerDataSet chatServerDataSet;
         private System.Windows.Forms.BindingSource loginsBindingSource;
-        private MyChatServer.ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter;
+        private Andriy.MyChat.Server.ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter;
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tpGeneral;
         private System.Windows.Forms.NumericUpDown nudPort;

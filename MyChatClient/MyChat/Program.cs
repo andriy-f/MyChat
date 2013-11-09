@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Windows.Forms;
-using System.Globalization;
-using System.IO;
-
-namespace MyChat
+﻿namespace Andriy.MyChat.Client
 {
+    using System;
+    using System.Globalization;
+    using System.IO;
+    using System.Windows.Forms;
+
     static class Program
     {
         static string logFile = @"%TEMP%\MyChat.log";
@@ -20,7 +18,7 @@ namespace MyChat
             AppDomain.CurrentDomain.UnhandledException += (sender, e) => LogException(e.ExceptionObject as Exception);
             Application.ThreadException += (sender, e) => LogException(e.Exception);
 
-            logFile = MyChat.Properties.Settings.Default.logFile;
+            logFile = Properties.Settings.Default.logFile;
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

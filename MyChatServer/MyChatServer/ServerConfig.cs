@@ -1,21 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-
-
-namespace MyChatServer
+﻿namespace Andriy.MyChat.Server
 {
+    using System;
+    using System.Windows.Forms;
+
     public partial class ServerConfig : Form
     {
         public ServerConfig()
         {            
-            InitializeComponent();
-            nudPort.Value = Convert.ToDecimal(Properties.Settings.Default.Port);            
+            this.InitializeComponent();
+            this.nudPort.Value = Convert.ToDecimal(Properties.Settings.Default.Port);            
         }
 
         private void ServerConfig_Load(object sender, EventArgs e)
@@ -40,16 +33,16 @@ namespace MyChatServer
                 new System.Data.SqlClient.SqlConnectionStringBuilder(
                     Program.LoginsTableAdapterdef.Connection.ConnectionString);            
             
-            tbDataSource.Text=builder["Data Source"].ToString();
-            tbInitCat.Text=builder["Initial Catalog"].ToString();
-            tbUser.Text = builder["User ID"].ToString();
-            tbPass.Text = builder["Password"].ToString();
-            tbConfPass.Text=tbPass.Text;
+            this.tbDataSource.Text=builder["Data Source"].ToString();
+            this.tbInitCat.Text=builder["Initial Catalog"].ToString();
+            this.tbUser.Text = builder["User ID"].ToString();
+            this.tbPass.Text = builder["Password"].ToString();
+            this.tbConfPass.Text=this.tbPass.Text;
         }
 
         private void bUpdate_Click(object sender, EventArgs e)
         {
-            Program.LoginsTableAdapterdef.Update(chatServerDataSet);            
+            Program.LoginsTableAdapterdef.Update(this.chatServerDataSet);            
         }
 
         private void bRefresh_Click(object sender, EventArgs e)
@@ -59,16 +52,16 @@ namespace MyChatServer
 
         private void bApply_Click(object sender, EventArgs e)
         {
-            if (tbConfPass.Text == tbPass.Text)
+            if (this.tbConfPass.Text == this.tbPass.Text)
             {
-                Properties.Settings.Default.Port = Convert.ToInt32(nudPort.Value);
+                Properties.Settings.Default.Port = Convert.ToInt32(this.nudPort.Value);
 
                 System.Data.SqlClient.SqlConnectionStringBuilder builder = new System.Data.SqlClient.SqlConnectionStringBuilder();
-                builder["Data Source"] = tbDataSource.Text;
+                builder["Data Source"] = this.tbDataSource.Text;
                 //builder["Integrated Security"] = true;
-                builder["Initial Catalog"] = tbInitCat.Text;
-                builder["User ID"] = tbUser.Text;
-                builder["Password"] = tbPass.Text;
+                builder["Initial Catalog"] = this.tbInitCat.Text;
+                builder["User ID"] = this.tbUser.Text;
+                builder["Password"] = this.tbPass.Text;
 
                 Program.LoginsTableAdapterdef.Connection.ConnectionString = builder.ConnectionString;
 
@@ -88,7 +81,7 @@ namespace MyChatServer
         {
             if (((MouseEventArgs)e).Button == System.Windows.Forms.MouseButtons.Left)
             {
-                showMe();
+                this.showMe();
             }
         }
 
@@ -96,14 +89,14 @@ namespace MyChatServer
         {
             //if (this.WindowState == FormWindowState.Minimized)
             //    this.WindowState = FormWindowState.Normal;
-            if (!Visible)
-                Show();
+            if (!this.Visible)
+                this.Show();
             this.Activate();
         }
 
         private void tsmiConfig_Click(object sender, EventArgs e)
         {
-            showMe();
+            this.showMe();
         }
 
         private void tsmiLog_Click(object sender, EventArgs e)
@@ -113,7 +106,7 @@ namespace MyChatServer
 
         private void tsmiExit_Click(object sender, EventArgs e)
         {
-            stopServerAndExit();
+            this.stopServerAndExit();
         }
 
         private void ServerConfig_FormClosing(object sender, FormClosingEventArgs e)
@@ -127,7 +120,7 @@ namespace MyChatServer
 
         private void bExit_Click(object sender, EventArgs e)
         {
-            stopServerAndExit();
+            this.stopServerAndExit();
         }
  
         private void stopServerAndExit()

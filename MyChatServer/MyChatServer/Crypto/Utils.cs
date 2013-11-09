@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MyChatServer.Crypto
+﻿namespace Andriy.MyChat.Server.Crypto
 {
-    using CustomCrypto;
+    using Andriy.Security.Cryptography;
 
     class Utils
     {

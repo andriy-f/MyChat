@@ -23,17 +23,15 @@
 
 //Needed improvements:
 //1. stream must be accessed only from listenToServer or lock stream while working with it
-using System;
-using System.Collections.Generic;
-using System.Collections;
-using System.Linq;
-using System.Text;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using CustomCrypto;
 
-namespace MyChat
+namespace Andriy.MyChat.Client
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Net.Sockets;
+
+    using Andriy.MyChat.Client.Crypto;
+
     public static class ChatClient
     {
         #region Fields

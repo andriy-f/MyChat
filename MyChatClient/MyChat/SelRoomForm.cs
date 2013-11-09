@@ -1,35 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-//using System.Linq;
-using System.Text;
-using System.Windows.Forms;
+﻿//using System.Linq;
 
-namespace MyChat
+namespace Andriy.MyChat.Client
 {
+    using System;
+    using System.ComponentModel;
+    using System.Windows.Forms;
+
     public partial class SelRoomForm : Form
     {
         //volatile string[] rms = null;
 
         public SelRoomForm()
         {            
-            InitializeComponent();            
+            this.InitializeComponent();            
 
-            refreshRooms();
-            tbRoom.Text = "r1";
-            tbPass.Text="r1pass";
-            tbConfPass.Text = "r1pass";
+            this.refreshRooms();
+            this.tbRoom.Text = "r1";
+            this.tbPass.Text="r1pass";
+            this.tbConfPass.Text = "r1pass";
         }
 
         public void refreshRooms()
         {            
-            cbRoomList.Text = "Refresh pending...";
+            this.cbRoomList.Text = "Refresh pending...";
             ChatClient.requestRooms(() =>
             {                
                 string[] rms = ChatClient.getRooms();
-                cbRoomListAction(rms);
+                this.cbRoomListAction(rms);
             });            
         }
 
@@ -40,47 +37,47 @@ namespace MyChat
                 ChatClient.stopListener();
                 Application.Exit();
             }
-            else Close();
+            else this.Close();
         }
 
         private void bOK_Click(object sender, EventArgs e)
         {
             string room;
-            if (rbNew.Checked)
+            if (this.rbNew.Checked)
             {
-                room = tbRoom.Text;
+                room = this.tbRoom.Text;
             }
-            else if (rbExisting.Checked)
+            else if (this.rbExisting.Checked)
             {
-                room = cbRoomList.Text;
+                room = this.cbRoomList.Text;
             }
             else throw new Exception("Radio buttons dont work");
-            if (ChatClient.performJoinRoom(room, tbPass.Text))
+            if (ChatClient.performJoinRoom(room, this.tbPass.Text))
             {
                 ChatForm chatForm1 = new ChatForm(room);
                 chatForm1.Show();
-                Close();
+                this.Close();
             }
             else MessageBox.Show("Can't enter room:\n Probably invalid password");
         }
 
         private void rbNewExisting_CheckedChanged(object sender, EventArgs e)
         {
-            if (rbNew.Checked)
+            if (this.rbNew.Checked)
             {
-                tbRoom.Enabled = true;
-                cbRoomList.Enabled = false;
+                this.tbRoom.Enabled = true;
+                this.cbRoomList.Enabled = false;
 
-                lConfPass.Visible = true;
-                tbConfPass.Visible = true;
+                this.lConfPass.Visible = true;
+                this.tbConfPass.Visible = true;
             }
-            else if (rbExisting.Checked)
+            else if (this.rbExisting.Checked)
             {
-                tbRoom.Enabled = false;
-                cbRoomList.Enabled = true;
+                this.tbRoom.Enabled = false;
+                this.cbRoomList.Enabled = true;
 
-                lConfPass.Visible = false;
-                tbConfPass.Visible = false;
+                this.lConfPass.Visible = false;
+                this.tbConfPass.Visible = false;
             }
         }
 
@@ -96,20 +93,20 @@ namespace MyChat
 
         private void cbRoomListAction(string[] rooms)
         {
-            if (cbRoomList.InvokeRequired)
+            if (this.cbRoomList.InvokeRequired)
             {
-                Action<string[]> act = cbRoomListAction;
+                Action<string[]> act = this.cbRoomListAction;
                 this.Invoke(act, new object[] { rooms });
             }
             else
             {                
-                cbRoomList.Items.Clear();
-                cbRoomList.Items.AddRange(rooms);
+                this.cbRoomList.Items.Clear();
+                this.cbRoomList.Items.AddRange(rooms);
 
                 if (rooms.Length > 0)
-                    cbRoomList.SelectedIndex = 0;
+                    this.cbRoomList.SelectedIndex = 0;
                 else
-                    cbRoomList.Text = "<Empty>";
+                    this.cbRoomList.Text = "<Empty>";
             }
         }
     }

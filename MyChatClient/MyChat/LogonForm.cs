@@ -1,62 +1,56 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using System.Net.Sockets;
-
-namespace MyChat
+﻿namespace Andriy.MyChat.Client
 {
+    using System;
+    using System.ComponentModel;
+    using System.Windows.Forms;
+
     public partial class LogonForm : Form
     {
         public LogonForm()
         {
-            InitializeComponent();
+            this.InitializeComponent();
 
             //System.Threading.Thread.CurrentThread.Priority = System.Threading.ThreadPriority.Lowest;
 
-            tbLogin.Text = "user1";
-            tbPass.Text = "qwe`123";
+            this.tbLogin.Text = "user1";
+            this.tbPass.Text = "qwe`123";
 
-            cbServer.Text = MyChat.Properties.Settings.Default.DefServer;
-            nudPort.Value=Convert.ToDecimal(MyChat.Properties.Settings.Default.DefPort);
+            this.cbServer.Text = Properties.Settings.Default.DefServer;
+            this.nudPort.Value=Convert.ToDecimal(Properties.Settings.Default.DefPort);
         }
 
         private void bLogin_Click(object sender, EventArgs e)
         {
-            ChatClient.init(cbServer.Text, Convert.ToInt32(nudPort.Value), tbLogin.Text, tbPass.Text);
-            if (performAuth() && ChatClient.performAgreement())
+            ChatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
+            if (this.performAuth() && ChatClient.performAgreement())
             {
-                performLogon();
+                this.performLogon();
             }
         }
 
         private void bNewAcc_Click(object sender, EventArgs e)
         {
-            if (Width == 320)
+            if (this.Width == 320)
             {
-                Width = 660;
-                bNewAcc.Text="New Account <<";
+                this.Width = 660;
+                this.bNewAcc.Text="New Account <<";
             }
             else
             {
-                Width = 320;
-                bNewAcc.Text = "New Account >>";
+                this.Width = 320;
+                this.bNewAcc.Text = "New Account >>";
             }
         }
 
         private void bRegister_Click(object sender, EventArgs e)
         {
-            if (tbRegLogin.Text != "" && tbRegPass.Text != "" && tbRegPass.Text == tbRegConf.Text)
+            if (this.tbRegLogin.Text != "" && this.tbRegPass.Text != "" && this.tbRegPass.Text == this.tbRegConf.Text)
             {
-                ChatClient.init(cbServer.Text, Convert.ToInt32(nudPort.Value), tbRegLogin.Text, tbRegPass.Text);
-                if (performAuth() && ChatClient.performAgreement())
+                ChatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbRegLogin.Text, this.tbRegPass.Text);
+                if (this.performAuth() && ChatClient.performAgreement())
                 {
                     
-                    performReg();
+                    this.performReg();
                 }
             }
             else MessageBox.Show("Invalid registration data");
@@ -64,7 +58,7 @@ namespace MyChat
 
         private void bCancel_Click(object sender, EventArgs e)
         { 
-            Close(); 
+            this.Close(); 
         }
 
         private bool performAuth()
@@ -126,10 +120,10 @@ namespace MyChat
             switch (ChatClient.performRegDef(false))
             {
                 case 0:
-                    MessageBox.Show(String.Format("Registration success: User '{0}' is now registered", tbRegLogin.Text));
+                    MessageBox.Show(String.Format("Registration success: User '{0}' is now registered", this.tbRegLogin.Text));
                     break;
                 case 1:
-                    MessageBox.Show(String.Format("Registration failed: User '{0}' already registered", tbRegLogin.Text));
+                    MessageBox.Show(String.Format("Registration failed: User '{0}' already registered", this.tbRegLogin.Text));
                     break;
                 default:
                     MessageBox.Show(String.Format("Registration failed"));

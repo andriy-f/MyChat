@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace MyChat.Properties {
+namespace Andriy.MyChat.Client.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]

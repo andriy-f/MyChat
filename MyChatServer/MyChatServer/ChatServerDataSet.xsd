@@ -4,7 +4,7 @@
     <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
       <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
         <Connections>
-          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="ChatServerConnectionString" IsAppSettingsProperty="true" Modifier="Assembly" Name="ChatServerConnectionString (Settings)" ParameterPrefix="@" PropertyReference="ApplicationSettings.MyChatServer.Properties.Settings.GlobalReference.Default.ChatServerConnectionString" Provider="System.Data.SqlClient" />
+          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="ChatServerConnectionString" ConnectionStringObject="" IsAppSettingsProperty="true" Modifier="Assembly" Name="ChatServerConnectionString (Settings)" ParameterPrefix="@" PropertyReference="ApplicationSettings.Andriy.MyChat.Server.Properties.Settings.GlobalReference.Default.ChatServerConnectionString" Provider="System.Data.SqlClient" />
         </Connections>
         <Tables>
           <TableAdapter BaseClass="System.ComponentModel.Component" DataAccessorModifier="AutoLayout, AnsiClass, Class, Public" DataAccessorName="LoginsTableAdapter" GeneratorDataComponentClassName="LoginsTableAdapter" Name="Logins" UserDataComponentName="LoginsTableAdapter">
@@ -98,7 +98,7 @@ WHERE (Logins=@Logins)AND(Passwords=@Passwords)</CommandText>
   <xs:element name="ChatServerDataSet" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:EnableTableAdapterManager="True" msprop:Generator_DataSetName="ChatServerDataSet" msprop:Generator_UserDSName="ChatServerDataSet">
     <xs:complexType>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Logins" msdata:Locale="" msprop:Generator_UserTableName="Logins" msprop:Generator_RowEvArgName="LoginsRowChangeEvent" msprop:Generator_TableVarName="tableLogins" msprop:Generator_TablePropName="Logins" msprop:Generator_RowDeletingName="LoginsRowDeleting" msprop:Generator_RowChangingName="LoginsRowChanging" msprop:Generator_RowDeletedName="LoginsRowDeleted" msprop:Generator_RowEvHandlerName="LoginsRowChangeEventHandler" msprop:Generator_RowChangedName="LoginsRowChanged" msprop:Generator_TableClassName="LoginsDataTable" msprop:Generator_RowClassName="LoginsRow">
+        <xs:element name="Logins" msdata:Locale="" msprop:Generator_UserTableName="Logins" msprop:Generator_RowEvArgName="LoginsRowChangeEvent" msprop:Generator_TableVarName="tableLogins" msprop:Generator_TablePropName="Logins" msprop:Generator_RowDeletingName="LoginsRowDeleting" msprop:Generator_RowChangingName="LoginsRowChanging" msprop:Generator_RowDeletedName="LoginsRowDeleted" msprop:Generator_RowEvHandlerName="LoginsRowChangeEventHandler" msprop:Generator_TableClassName="LoginsDataTable" msprop:Generator_RowChangedName="LoginsRowChanged" msprop:Generator_RowClassName="LoginsRow">
           <xs:complexType>
             <xs:sequence>
               <xs:element name="Logins" msprop:Generator_ColumnVarNameInTable="columnLogins" msprop:Generator_ColumnPropNameInRow="Logins" msprop:Generator_ColumnPropNameInTable="LoginsColumn" msprop:Generator_UserColumnName="Logins">

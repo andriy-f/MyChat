@@ -1,18 +1,18 @@
-﻿using System;
-
-using Org.BouncyCastle.Asn1.X9;
-using Org.BouncyCastle.Asn1.Nist;
-using Org.BouncyCastle.Math;
-using Org.BouncyCastle.Math.EC;
-using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Crypto.Signers;
-using Org.BouncyCastle.Utilities.Encoders;
-
-namespace CustomCrypto
+﻿namespace Andriy.Security.Cryptography
 {
+    using System;
+
+    using Org.BouncyCastle.Asn1.Nist;
+    using Org.BouncyCastle.Asn1.X9;
+    using Org.BouncyCastle.Crypto;
+    using Org.BouncyCastle.Crypto.Generators;
+    using Org.BouncyCastle.Crypto.Parameters;
+    using Org.BouncyCastle.Crypto.Signers;
+    using Org.BouncyCastle.Math;
+    using Org.BouncyCastle.Math.EC;
+    using Org.BouncyCastle.Security;
+    using Org.BouncyCastle.Utilities.Encoders;
+
     class ECDSAWrapper
     {
         #region Fields
@@ -36,18 +36,18 @@ namespace CustomCrypto
         {
             try
             {
-                initCurveandParams(type);
+                this.initCurveandParams(type);
 
                 SecureRandom random = new SecureRandom();
-                ECKeyGenerationParameters genParam = new ECKeyGenerationParameters(parameters, random);
+                ECKeyGenerationParameters genParam = new ECKeyGenerationParameters(this.parameters, random);
                 ECKeyPairGenerator pGen = new ECKeyPairGenerator();
                 pGen.Init(genParam);
-                pair = pGen.GenerateKeyPair();
+                this.pair = pGen.GenerateKeyPair();
 
                 if (forSign)
-                    ecdsa.Init(true, new ParametersWithRandom(pair.Private, random));
+                    this.ecdsa.Init(true, new ParametersWithRandom(this.pair.Private, random));
                 else
-                    ecdsa.Init(false, pair.Public);
+                    this.ecdsa.Init(false, this.pair.Public);
             }
             catch (Exception ex)
             {
@@ -63,7 +63,7 @@ namespace CustomCrypto
         /// <param name="import">Imporeted public or private key</param>
         public ECDSAWrapper(int type, bool forSign, byte[] import)
         {
-            initCurveandParams(type);
+            this.initCurveandParams(type);
 
             if (forSign)
             {
@@ -72,9 +72,9 @@ namespace CustomCrypto
                     //import - D (BigInteger)
                     SecureRandom random = new SecureRandom();
                     BigInteger Drec = new BigInteger(import);
-                    ECPrivateKeyParameters ecPrivImported = new ECPrivateKeyParameters(Drec, parameters);
+                    ECPrivateKeyParameters ecPrivImported = new ECPrivateKeyParameters(Drec, this.parameters);
                     ParametersWithRandom ecPrivImportedpwr = new ParametersWithRandom(ecPrivImported, random);
-                    ecdsa.Init(true, ecPrivImportedpwr);
+                    this.ecdsa.Init(true, ecPrivImportedpwr);
                 }
                 catch (Exception ex)
                 {
@@ -86,9 +86,9 @@ namespace CustomCrypto
                 try
                 {
                     //import - Q (ECPoint)
-                    ECPoint Qrec = ecCurve.DecodePoint(import);
-                    ECPublicKeyParameters recPub = new ECPublicKeyParameters(Qrec, parameters);
-                    ecdsa.Init(false, recPub);
+                    ECPoint Qrec = this.ecCurve.DecodePoint(import);
+                    ECPublicKeyParameters recPub = new ECPublicKeyParameters(Qrec, this.parameters);
+                    this.ecdsa.Init(false, recPub);
                 }
                 catch (Exception ex)
                 {
@@ -103,19 +103,19 @@ namespace CustomCrypto
             {
                 case 0:
                     X9ECParameters p = NistNamedCurves.GetByName("P-521");
-                    ecCurve = p.Curve;
-                    parameters = new ECDomainParameters(p.Curve, p.G, p.N, p.H);
+                    this.ecCurve = p.Curve;
+                    this.parameters = new ECDomainParameters(p.Curve, p.G, p.N, p.H);
                     break;
 
                 case 1:
-                    ecCurve = new FpCurve(
+                    this.ecCurve = new FpCurve(
                         new BigInteger("883423532389192164791648750360308885314476597252960362792450860609699839"), // q
                         new BigInteger("7fffffffffffffffffffffff7fffffffffff8000000000007ffffffffffc", 16), // a
                         new BigInteger("6b016c3bdcf18941d0d654921475ca71a9db2fb27d1d37796185c2942c0a", 16)); // b
 
-                    parameters = new ECDomainParameters(
-                        ecCurve,
-                        ecCurve.DecodePoint(Hex.Decode("020ffa963cdca8816ccc33b8642bedf905c3d358573d3f27fbbd3b3cb9aaaf")), // G
+                    this.parameters = new ECDomainParameters(
+                        this.ecCurve,
+                        this.ecCurve.DecodePoint(Hex.Decode("020ffa963cdca8816ccc33b8642bedf905c3d358573d3f27fbbd3b3cb9aaaf")), // G
                         new BigInteger("883423532389192164791648750360308884807550341691627752275345424702807307")); // n
                     break;
 
@@ -129,7 +129,7 @@ namespace CustomCrypto
 
         public byte[] signHash(byte[] hash)
         {
-            BigInteger[] sig = ecdsa.GenerateSignature(hash);
+            BigInteger[] sig = this.ecdsa.GenerateSignature(hash);
 
             //int hsz = 8;//header size 4+4
             //sign
@@ -170,7 +170,7 @@ namespace CustomCrypto
                 BigInteger r = new BigInteger(sig0);
                 BigInteger s = new BigInteger(sig1);
 
-                return ecdsa.VerifySignature(hash, r, s);
+                return this.ecdsa.VerifySignature(hash, r, s);
             }
             catch (Exception)
             {
@@ -184,9 +184,9 @@ namespace CustomCrypto
 
         public byte[] exportPrivate()// Export Q (ECPoint)
         {
-            if (pair != null)
+            if (this.pair != null)
             {
-                ECPrivateKeyParameters ecpriv = (ECPrivateKeyParameters)pair.Private;
+                ECPrivateKeyParameters ecpriv = (ECPrivateKeyParameters)this.pair.Private;
                 return ecpriv.D.ToByteArray();
             }
             else throw new Exception("Cannot export private data (key pair is not new)");
@@ -194,9 +194,9 @@ namespace CustomCrypto
 
         public byte[] exportPublic()// Export Q (ECPoint)
         {
-            if (pair != null)
+            if (this.pair != null)
             {
-                ECPublicKeyParameters ecpub = (ECPublicKeyParameters)pair.Public;//parameters - const            
+                ECPublicKeyParameters ecpub = (ECPublicKeyParameters)this.pair.Public;//parameters - const            
                 return ecpub.Q.GetEncoded();
             }
             else throw new Exception("Cannot export public data (key pair is not new)");

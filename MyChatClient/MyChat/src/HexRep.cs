@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace System.Text
+﻿namespace Andriy.MyChat.Client
 {
+    using System;
+    using System.Text;
+
     /// <summary>
     /// Class for getting string representation of byte arrays (in hex format)
     /// </summary>

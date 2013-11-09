@@ -1,6 +1,6 @@
-﻿namespace MyChatServer.DAL
+﻿namespace Andriy.MyChat.Server.DAL
 {
-    using MyChatServer.ChatServerDataSetTableAdapters;
+    using Andriy.MyChat.Server.ChatServerDataSetTableAdapters;
 
     class MSSQLDataGetter : DataGetter
     {
