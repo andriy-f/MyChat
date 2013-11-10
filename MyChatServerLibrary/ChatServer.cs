@@ -22,17 +22,15 @@
 
         private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatServer));
         
-        private static readonly Dictionary<string, ChatClient> ClientBase = new Dictionary<string, ChatClient>(10); // login/ChatClient
+        private static readonly Dictionary<string, ChatClient> Clients = new Dictionary<string, ChatClient>(10); // login/ChatClient
 
         private static readonly Hashtable RoomBase = new Hashtable(3); // room/RoomParams
         
-        private static readonly byte[] Iv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
+        private static readonly byte[] CryptoIv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
-        private static readonly MyRandoms Randoms = new MyRandoms();
+        private static readonly List<string> UnusedClients = new List<string>(5);
 
-        private static readonly List<string> ClientsToFree = new List<string>(5);
-
-        private static readonly List<string> RoomsToFree = new List<string>(5);
+        private static readonly List<string> UnusedRooms = new List<string>(5);
 
         private static Thread listenerThread;
 
@@ -56,7 +54,7 @@
 
             Port = port;
             
-            ClientBase.Clear();
+            Clients.Clear();
 
             // Listener thread
             if (listenerThread != null)
@@ -117,19 +115,19 @@
                     else
                     {
                         // Processing current connections
-                        foreach (var de in ClientBase)
+                        foreach (var de in Clients)
                         {
                             de.Value.Login = de.Key; // TODO: refactor
                             ProcessCurrentConnection(de.Value);
                         }
 
                         // free resources from logout of clients
-                        foreach (var flogin in ClientsToFree)
+                        foreach (var flogin in UnusedClients)
                         {
                             removeClient(flogin);
                         }
 
-                        ClientsToFree.Clear();
+                        UnusedClients.Clear();
 
                         // Free unocupied rooms - deprecated because of saving room params (password)
                         // cleanupRooms();
@@ -182,7 +180,7 @@
                                     {
                                         if (IsLogged(login))
                                         {
-                                            var oldUserParams = ClientBase[login];
+                                            var oldUserParams = Clients[login];
                                             int oldresp = -2;
                                             if (oldUserParams.Tcp.Connected)
                                             {
@@ -293,7 +291,7 @@
         {
             var chatClient = new ChatClient(client);
             chatClient.Cryptor = cryptor1;
-            ClientBase.Add(login, chatClient);
+            Clients.Add(login, chatClient);
             client.GetStream().WriteByte(0);
         }
 
@@ -346,7 +344,7 @@
                 var aeskey = new byte[AESKeyLength];
                 Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
 
-                cryptor = new AESCSPImpl(aeskey, Iv1);
+                cryptor = new AESCSPImpl(aeskey, CryptoIv1);
                 return 0;
             }
             catch (Exception ex)
@@ -380,13 +378,13 @@
                                 Log.DebugFormat("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
 
                                 // if user(source) in room(dest)
-                                var senderClient = ClientBase[source];
+                                var senderClient = Clients[source];
                                 if (senderClient.Rooms.Contains(dest))
                                 {
                                     var roomParams = (RoomParams)RoomBase[dest];
                                     foreach (string roomUsr in roomParams.Users)
                                     {
-                                        var destinationClient = ClientBase[roomUsr];
+                                        var destinationClient = Clients[roomUsr];
                                         if (destinationClient.Tcp.Connected)
                                         {
                                             try
@@ -397,7 +395,7 @@
                                             }
                                             catch (System.IO.IOException)
                                             {
-                                                ClientsToFree.Add(roomUsr);
+                                                UnusedClients.Add(roomUsr);
                                             }
                                         }
                                     }
@@ -413,9 +411,9 @@
                                 data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseChatMsg(data, out source, out dest, out messg); // dest - user
                                 Log.DebugFormat("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
-                                if (ClientBase.ContainsKey(dest))
+                                if (Clients.ContainsKey(dest))
                                 {
-                                    var destinationClient = ClientBase[dest];
+                                    var destinationClient = Clients[dest];
                                     if (destinationClient.Tcp.Connected)
                                     {
                                         try
@@ -426,7 +424,7 @@
                                         }
                                         catch (System.IO.IOException)
                                         {
-                                            ClientsToFree.Add(dest);
+                                            UnusedClients.Add(dest);
                                         }
                                     }
                                 }
@@ -443,7 +441,7 @@
                                 // Display to all
                                 ParseChatMsg(data, out source, out dest, out messg);
                                 Log.DebugFormat("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
-                                foreach (var destDE in ClientBase)
+                                foreach (var destDE in Clients)
                                 {
                                     var destinationClient = destDE.Value;
                                     if (destinationClient.Tcp.Connected)
@@ -456,7 +454,7 @@
                                         }
                                         catch (System.IO.IOException)
                                         {
-                                            ClientsToFree.Add(destDE.Key);
+                                            UnusedClients.Add(destDE.Key);
                                         }
                                     }
                                 }
@@ -507,7 +505,7 @@
                                 stream.WriteByte(0); // approve - need?
 
                                 // Free Resources
-                                ClientsToFree.Add(clientLogin);
+                                UnusedClients.Add(clientLogin);
                                 FreeTCPClient(client);
                                 Log.DebugFormat("Client '{0}' performed Logout", clientLogin);
                                 break;
@@ -544,7 +542,7 @@
                                 clientLogin, 
                                 Utils.TCPClient2IPAddress(client), 
                                 ex);
-                        ClientsToFree.Add(clientLogin);
+                        UnusedClients.Add(clientLogin);
                         FreeTCPClient(client);
                     }
                 }
@@ -557,7 +555,7 @@
 
         private static bool IsLogged(string login)
         {
-            return ClientBase.ContainsKey(login);
+            return Clients.ContainsKey(login);
         }
 
         private static bool AddRoom(string room, string pass)
@@ -577,35 +575,35 @@
 
         private static void AddUserToRoom(string room, string login)
         {
-            ((ChatClient)ClientBase[login]).Rooms.Add(room);
+            ((ChatClient)Clients[login]).Rooms.Add(room);
             ((RoomParams)RoomBase[room]).Users.Add(login);
         }
 
         private static void removeClient(string login)
         {
             // Removes client from cliBase and every room, if room empty -> free it
-            ClientBase.Remove(login);
+            Clients.Remove(login);
             foreach (DictionaryEntry de in RoomBase)
             {
                 RoomParams rp = (RoomParams)de.Value;
                 rp.Users.Remove(login);
                 if (rp.Users.Count == 0)
                 {
-                    RoomsToFree.Add((string)de.Key);
+                    UnusedRooms.Add((string)de.Key);
                 }
             }
 
-            foreach (string froom in RoomsToFree)
+            foreach (string froom in UnusedRooms)
             {
                 RoomBase.Remove(froom);
             }
 
-            RoomsToFree.Clear();
+            UnusedRooms.Clear();
         }
 
         private static void RemoveClientFromRoom(string login, string room)
         {
-            ((ChatClient)ClientBase[login]).Rooms.Remove(room);
+            ((ChatClient)Clients[login]).Rooms.Remove(room);
             ((RoomParams)RoomBase[room]).Users.Remove(login);
         }
 
