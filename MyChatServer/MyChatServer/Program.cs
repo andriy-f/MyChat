@@ -19,6 +19,8 @@
 
         internal static ChatServerDataSetTableAdapters.LoginsTableAdapter LoginsTableAdapterdef { get; private set; }
         
+        internal static ChatServer Server { get; private set; }
+
         #endregion
 
         /// <summary>
@@ -39,7 +41,8 @@
             AppDomain.CurrentDomain.UnhandledException += (sender, e) => LogException(e.ExceptionObject as Exception);
             Application.ThreadException += (sender, e) => LogException(e.Exception);
 
-            ChatServer.Init(DataGetter.Instance,  Properties.Settings.Default.Port); // must catch invalid pass 
+            Server = new ChatServer();
+            Server.Init(DataGetter.Instance,  Properties.Settings.Default.Port); // must catch invalid pass 
             
             // Init ServerConfig Form            
             new ServerConfig();

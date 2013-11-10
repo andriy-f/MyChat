@@ -125,7 +125,7 @@
  
         private void stopServerAndExit()
         {
-            ChatServer.Finish();
+            Program.Server.Finish();
             Application.Exit();
         }
 

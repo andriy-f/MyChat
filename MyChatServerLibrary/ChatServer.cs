@@ -6,11 +6,12 @@
     using System.IO;
     using System.Net;
     using System.Net.Sockets;
-    using System.Runtime.Remoting.Messaging;
     using System.Threading;
 
     using Andriy.MyChat.Server.DAL;
     using Andriy.Security.Cryptography;
+
+    using log4net;
 
     public class ChatServer
     {
@@ -19,65 +20,33 @@
         private const int AgreementLength = 32;
 
         ////public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
+        private static readonly ILog Log = LogManager.GetLogger(typeof(ChatServer));
 
-        private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatServer));
-        
-        private static readonly Dictionary<string, ChatClient> Clients = new Dictionary<string, ChatClient>(10); // login/ChatClient
-
-        private static readonly Hashtable RoomBase = new Hashtable(3); // room/RoomParams
-        
         private static readonly byte[] CryptoIv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
-        private static readonly List<string> UnusedClients = new List<string>(5);
+        private readonly Dictionary<string, ChatClient> clients = new Dictionary<string, ChatClient>(10); // login/ChatClient
 
-        private static readonly List<string> UnusedRooms = new List<string>(5);
+        private readonly Hashtable roomBase = new Hashtable(3); // room/RoomParams
+        
+        private readonly List<string> unusedClients = new List<string>(5);
 
-        private static Thread listenerThread;
+        private readonly List<string> unusedRooms = new List<string>(5);
 
-        private static DataGetter dataGetter;
+        private Thread listenerThread;
 
-        private static bool continueToListen = true;
+        private DataGetter dataGetter;
+
+        private bool continueToListen = true;
         
         //// static ECDSAWrapper seanceDsaClientChecker;//checks client's messages
         
         //// static ECDSAWrapper seanceDsaServerSigner;//signs servers messages
         
-        public static int Port { get; private set; }
+        public int Port { get; private set; }
 
         #endregion
 
         #region Init&Free
-
-        public static void Init(DataGetter newDataGetter, int port)
-        {
-            dataGetter = newDataGetter;
-
-            Port = port;
-            
-            Clients.Clear();
-
-            // Listener thread
-            if (listenerThread != null)
-            {
-                listenerThread.Abort();
-            }
-
-            listenerThread = new Thread(Listen)
-                             {
-                                 Priority = ThreadPriority.Lowest
-                             };
-            listenerThread.Start();
-            Log.Info("Listening started");
-        }
-
-        public static void Finish()
-        {
-            if (listenerThread != null)
-            {
-                continueToListen = false;
-                listenerThread.Join();
-            }
-        }
 
         public static void FreeTCPClient(TcpClient client)
         {
@@ -92,42 +61,73 @@
             }
         }
 
+        public void Init(DataGetter newDataGetter, int port)
+        {
+            this.dataGetter = newDataGetter;
+
+            this.Port = port;
+            
+            this.clients.Clear();
+
+            // Listener thread
+            if (this.listenerThread != null)
+            {
+                this.listenerThread.Abort();
+            }
+
+            this.listenerThread = new Thread(this.Listen)
+                             {
+                                 Priority = ThreadPriority.Lowest
+                             };
+            this.listenerThread.Start();
+            Log.Info("Listening started");
+        }
+
+        public void Finish()
+        {
+            if (this.listenerThread != null)
+            {
+                this.continueToListen = false;
+                this.listenerThread.Join();
+            }
+        }
+
         #endregion
 
         #region Listen
 
-        public static void Listen()
+        public void Listen()
         {
             TcpListener tcpListener = null;
             try
             {
-                int port = Port;
+                int port = this.Port;
                 var localAddr = IPAddress.Any; // System.Net.IPAddress.Parse("127.0.0.1");
                 tcpListener = new TcpListener(localAddr, port);
                 tcpListener.Start();
                 
-                while (continueToListen)
+                while (this.continueToListen)
                 {
                     if (tcpListener.Pending())
                     {
-                        ProcessPendingConnection(tcpListener.AcceptTcpClient());
+                        this.ProcessPendingConnection(tcpListener.AcceptTcpClient());
                     }
                     else
                     {
                         // Processing current connections
-                        foreach (var de in Clients)
+                        foreach (var de in this.clients)
                         {
                             de.Value.Login = de.Key; // TODO: refactor
-                            ProcessCurrentConnection(de.Value);
+                            this.ProcessCurrentConnection(de.Value);
                         }
 
                         // free resources from logout of clients
-                        foreach (var flogin in UnusedClients)
+                        foreach (var flogin in this.unusedClients)
                         {
-                            removeClient(flogin);
+                            this.RemoveClient(flogin);
                         }
 
-                        UnusedClients.Clear();
+                        this.unusedClients.Clear();
 
                         // Free unocupied rooms - deprecated because of saving room params (password)
                         // cleanupRooms();
@@ -149,7 +149,7 @@
             }
         }
 
-        private static void ProcessPendingConnection(TcpClient client)
+        private void ProcessPendingConnection(TcpClient client)
         {
             var clientIPAddress = Utils.TCPClient2IPAddress(client);
             Log.DebugFormat("Connected from {0}", clientIPAddress);
@@ -176,11 +176,11 @@
                                     // Logon attempt
                                     bytes = ReadWrappedEncMsg(stream, cryptor);
                                     ParseLogonMsg(bytes, out login, out pass);
-                                    if (dataGetter.ValidateLoginPass(login, pass))
+                                    if (this.dataGetter.ValidateLoginPass(login, pass))
                                     {
-                                        if (IsLogged(login))
+                                        if (this.IsLogged(login))
                                         {
-                                            var oldUserParams = Clients[login];
+                                            var oldUserParams = this.clients[login];
                                             int oldresp = -2;
                                             if (oldUserParams.Tcp.Connected)
                                             {
@@ -191,7 +191,7 @@
                                                     oldStream.WriteByte(10);
                                                     oldresp = oldStream.ReadByte();
                                                 }
-                                                catch (System.IO.IOException)
+                                                catch (IOException)
                                                 {
                                                     // Timeout - old client probably dead
                                                 }
@@ -211,8 +211,8 @@
                                             {
                                                 // old client with login <login> dead -> dispose of him and connect new
                                                 FreeTCPClient(oldUserParams.Tcp);
-                                                removeClient(login);
-                                                ProcessAndAcceptNewClient(client, login, cryptor);
+                                                this.RemoveClient(login);
+                                                this.ProcessAndAcceptNewClient(client, login, cryptor);
                                                 Log.DebugFormat(
                                                         "Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)", 
                                                         clientIPAddress, 
@@ -221,7 +221,7 @@
                                         }
                                         else
                                         {
-                                            ProcessAndAcceptNewClient(client, login, cryptor);
+                                            this.ProcessAndAcceptNewClient(client, login, cryptor);
                                             Log.DebugFormat(
                                                     "Logon from IP '{0}' success: User '{1}' from IP  logged on", 
                                                     clientIPAddress, 
@@ -244,9 +244,9 @@
                                     // Registration without logon
                                     bytes = ReadWrappedEncMsg(stream, cryptor);
                                     ParseLogonMsg(bytes, out login, out pass);
-                                    if (!dataGetter.LoginExists(login))
+                                    if (!this.dataGetter.LoginExists(login))
                                     {
-                                        dataGetter.AddUser(login, pass);
+                                        this.dataGetter.AddUser(login, pass);
                                         stream.WriteByte(0);
                                         Log.DebugFormat("Registration success: User '{0}' registered", login);
                                     }
@@ -287,19 +287,43 @@
 
         #region Processors
 
-        internal static void ProcessAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
+        private static int ProcessAgreement(NetworkStream stream, out AESCSPImpl cryptor)
+        {
+            try
+            {
+                var ecdh1 = new ECDHWrapper(AgreementLength);
+                byte[] recCliPub = ReadWrappedMsg(stream);
+                WriteWrappedMsg(stream, ecdh1.PubData);
+                byte[] agr = ecdh1.calcAgreement(recCliPub);
+
+                const int AESKeyLength = 32;
+                var aeskey = new byte[AESKeyLength];
+                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
+
+                cryptor = new AESCSPImpl(aeskey, CryptoIv1);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
+                cryptor = null;
+                return 1;
+            }
+        }
+
+        private void ProcessAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
         {
             var chatClient = new ChatClient(client);
             chatClient.Cryptor = cryptor1;
-            Clients.Add(login, chatClient);
+            this.clients.Add(login, chatClient);
             client.GetStream().WriteByte(0);
         }
 
-        /// <summary>
-        /// Processes authentification attempt from new client
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <returns>0 if ok, 1 if wrong, 2 if exception</returns>
+        //// <summary>
+        //// Processes authentification attempt from new client
+        //// </summary>
+        //// <param name="stream"></param>
+        //// <returns>0 if ok, 1 if wrong, 2 if exception</returns>
         ////internal static int ProcessAuth(NetworkStream stream)
         ////{
         ////    try
@@ -330,32 +354,8 @@
         ////        return 2;
         ////    }
         ////}
-
-        internal static int ProcessAgreement(NetworkStream stream, out AESCSPImpl cryptor)
-        {
-            try
-            {
-                var ecdh1 = new ECDHWrapper(AgreementLength);
-                byte[] recCliPub = ReadWrappedMsg(stream);
-                WriteWrappedMsg(stream, ecdh1.PubData);
-                byte[] agr = ecdh1.calcAgreement(recCliPub);
-
-                const int AESKeyLength = 32;
-                var aeskey = new byte[AESKeyLength];
-                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
-
-                cryptor = new AESCSPImpl(aeskey, CryptoIv1);
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
-                cryptor = null;
-                return 1;
-            }
-        }
-
-        private static void ProcessCurrentConnection(ChatClient chatClient)
+        
+        private void ProcessCurrentConnection(ChatClient chatClient)
         {
             TcpClient client = chatClient.Tcp;
             if (client != null && client.Connected)
@@ -378,13 +378,13 @@
                                 Log.DebugFormat("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
 
                                 // if user(source) in room(dest)
-                                var senderClient = Clients[source];
+                                var senderClient = this.clients[source];
                                 if (senderClient.Rooms.Contains(dest))
                                 {
-                                    var roomParams = (RoomParams)RoomBase[dest];
+                                    var roomParams = (RoomParams)this.roomBase[dest];
                                     foreach (string roomUsr in roomParams.Users)
                                     {
-                                        var destinationClient = Clients[roomUsr];
+                                        var destinationClient = this.clients[roomUsr];
                                         if (destinationClient.Tcp.Connected)
                                         {
                                             try
@@ -393,9 +393,9 @@
                                                 destStream.WriteByte(3);
                                                 WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                             }
-                                            catch (System.IO.IOException)
+                                            catch (IOException)
                                             {
-                                                UnusedClients.Add(roomUsr);
+                                                this.unusedClients.Add(roomUsr);
                                             }
                                         }
                                     }
@@ -411,9 +411,9 @@
                                 data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseChatMsg(data, out source, out dest, out messg); // dest - user
                                 Log.DebugFormat("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
-                                if (Clients.ContainsKey(dest))
+                                if (this.clients.ContainsKey(dest))
                                 {
-                                    var destinationClient = Clients[dest];
+                                    var destinationClient = this.clients[dest];
                                     if (destinationClient.Tcp.Connected)
                                     {
                                         try
@@ -422,9 +422,9 @@
                                             destStream.WriteByte(4);
                                             WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                         }
-                                        catch (System.IO.IOException)
+                                        catch (IOException)
                                         {
-                                            UnusedClients.Add(dest);
+                                            this.unusedClients.Add(dest);
                                         }
                                     }
                                 }
@@ -441,9 +441,9 @@
                                 // Display to all
                                 ParseChatMsg(data, out source, out dest, out messg);
                                 Log.DebugFormat("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
-                                foreach (var destDE in Clients)
+                                foreach (var destDe in this.clients)
                                 {
-                                    var destinationClient = destDE.Value;
+                                    var destinationClient = destDe.Value;
                                     if (destinationClient.Tcp.Connected)
                                     {
                                         try
@@ -452,9 +452,9 @@
                                             destStream.WriteByte(5);
                                             WriteWrappedEncMsg(destStream, data, destinationClient.Cryptor);
                                         }
-                                        catch (System.IO.IOException)
+                                        catch (IOException)
                                         {
-                                            UnusedClients.Add(destDE.Key);
+                                            this.unusedClients.Add(destDe.Key);
                                         }
                                     }
                                 }
@@ -464,12 +464,12 @@
                                 string room, pass;
                                 data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseJoinRoomMsg(data, out room, out pass);
-                                if (RoomExist(room))
+                                if (this.RoomExist(room))
                                 {
-                                    if (confirmRoomPass(room, pass))
+                                    if (this.ConfirmRoomPass(room, pass))
                                     {
                                         // Allow join 
-                                        AddUserToRoom(room, clientLogin);
+                                        this.AddUserToRoom(room, clientLogin);
                                         stream.WriteByte(0); // Success
                                         Log.DebugFormat(
                                                 "User '{0}' joined room '{1}' with pass '{2}'", 
@@ -490,8 +490,8 @@
                                 else
                                 {
                                     // Room doesn't exist
-                                    AddRoom(room, pass);
-                                    AddUserToRoom(room, clientLogin);
+                                    this.AddRoom(room, pass);
+                                    this.AddUserToRoom(room, clientLogin);
                                     stream.WriteByte(0); // Success
                                     Log.DebugFormat(
                                             "User '{0}' joined new room '{1}' with pass '{2}'", 
@@ -505,12 +505,12 @@
                                 stream.WriteByte(0); // approve - need?
 
                                 // Free Resources
-                                UnusedClients.Add(clientLogin);
+                                this.unusedClients.Add(clientLogin);
                                 FreeTCPClient(client);
                                 Log.DebugFormat("Client '{0}' performed Logout", clientLogin);
                                 break;
                             case 8: // Get Rooms                                        
-                                data = FormatGetRoomsMsgReply(RoomBase.Keys);
+                                data = FormatGetRoomsMsgReply(this.roomBase.Keys);
                                 stream.WriteByte(8);
                                 WriteWrappedMsg(stream, data);
                                 Log.DebugFormat("Client '{0}' requested rooms", clientLogin);
@@ -518,13 +518,13 @@
                             case 9: // Leave room
                                 data = ReadWrappedMsg(stream);
                                 string leaveroom = ParseLeaveRoomMsg(data);
-                                RemoveClientFromRoom(clientLogin, leaveroom);
+                                this.RemoveClientFromRoom(clientLogin, leaveroom);
                                 stream.WriteByte(0); // approve - need?
                                 Log.DebugFormat("Client '{0}' leaved room '{1}'", clientLogin, leaveroom);
                                 break;
                             case 11: // Get Room users
                                 string roomname = System.Text.Encoding.UTF8.GetString(ReadWrappedMsg(stream));
-                                data = FormatRoomUsers(roomname);
+                                data = this.FormatRoomUsers(roomname);
                                 stream.WriteByte(11);
                                 WriteWrappedMsg(stream, data);
                                 Log.DebugFormat("Client '{0}' requested room users", clientLogin);
@@ -542,7 +542,7 @@
                                 clientLogin, 
                                 Utils.TCPClient2IPAddress(client), 
                                 ex);
-                        UnusedClients.Add(clientLogin);
+                        this.unusedClients.Add(clientLogin);
                         FreeTCPClient(client);
                     }
                 }
@@ -553,18 +553,18 @@
 
         #region Rooms&Clients in local datastore
 
-        private static bool IsLogged(string login)
+        private bool IsLogged(string login)
         {
-            return Clients.ContainsKey(login);
+            return this.clients.ContainsKey(login);
         }
 
-        private static bool AddRoom(string room, string pass)
+        private bool AddRoom(string room, string pass)
         {
-            if (!RoomBase.Contains(room))
+            if (!this.roomBase.Contains(room))
             {
                 RoomParams newrp = new RoomParams();
                 newrp.Password = pass;
-                RoomBase.Add(room, newrp);
+                this.roomBase.Add(room, newrp);
                 return true;
             }
             else
@@ -573,38 +573,38 @@
             }
         }
 
-        private static void AddUserToRoom(string room, string login)
+        private void AddUserToRoom(string room, string login)
         {
-            ((ChatClient)Clients[login]).Rooms.Add(room);
-            ((RoomParams)RoomBase[room]).Users.Add(login);
+            this.clients[login].Rooms.Add(room);
+            ((RoomParams)this.roomBase[room]).Users.Add(login);
         }
 
-        private static void removeClient(string login)
+        private void RemoveClient(string login)
         {
             // Removes client from cliBase and every room, if room empty -> free it
-            Clients.Remove(login);
-            foreach (DictionaryEntry de in RoomBase)
+            this.clients.Remove(login);
+            foreach (DictionaryEntry de in this.roomBase)
             {
-                RoomParams rp = (RoomParams)de.Value;
+                var rp = (RoomParams)de.Value;
                 rp.Users.Remove(login);
                 if (rp.Users.Count == 0)
                 {
-                    UnusedRooms.Add((string)de.Key);
+                    this.unusedRooms.Add((string)de.Key);
                 }
             }
 
-            foreach (string froom in UnusedRooms)
+            foreach (var froom in this.unusedRooms)
             {
-                RoomBase.Remove(froom);
+                this.roomBase.Remove(froom);
             }
 
-            UnusedRooms.Clear();
+            this.unusedRooms.Clear();
         }
 
-        private static void RemoveClientFromRoom(string login, string room)
+        private void RemoveClientFromRoom(string login, string room)
         {
-            ((ChatClient)Clients[login]).Rooms.Remove(room);
-            ((RoomParams)RoomBase[room]).Users.Remove(login);
+            ((ChatClient)this.clients[login]).Rooms.Remove(room);
+            ((RoomParams)this.roomBase[room]).Users.Remove(login);
         }
 
         // static void cleanupRooms()
@@ -618,72 +618,72 @@
         // roomBase.Remove(froom);
         // roomsToFree.Clear();
         // }
-        private static bool RoomExist(string room)
+        private bool RoomExist(string room)
         {
-            return RoomBase.ContainsKey(room);
+            return this.roomBase.ContainsKey(room);
         }
 
-        private static bool confirmRoomPass(string room, string pass)
+        private bool ConfirmRoomPass(string room, string pass)
         {
-            return ((RoomParams)RoomBase[room]).Password == pass;
+            return ((RoomParams)this.roomBase[room]).Password == pass;
         }
 
         #endregion
 
         #region Formatting Messages
 
-        private static byte[] FormatChatMsg(byte msgtype, string source, string dest, string message)
-        {
-            // dest sometimes is "all"
-            // int headerSize = 13;
-            byte[] sourceB = System.Text.Encoding.UTF8.GetBytes(source);
-            byte[] destB = System.Text.Encoding.UTF8.GetBytes(dest);
-            byte[] messageB = System.Text.Encoding.UTF8.GetBytes(message);
-            int dataSize = sourceB.Length + destB.Length + messageB.Length;
+        ////private static byte[] FormatChatMsg(byte msgtype, string source, string dest, string message)
+        ////{
+        ////    // dest sometimes is "all"
+        ////    // int headerSize = 13;
+        ////    byte[] sourceB = System.Text.Encoding.UTF8.GetBytes(source);
+        ////    byte[] destB = System.Text.Encoding.UTF8.GetBytes(dest);
+        ////    byte[] messageB = System.Text.Encoding.UTF8.GetBytes(message);
+        ////    int dataSize = sourceB.Length + destB.Length + messageB.Length;
 
-            // Header - 1+4+4+4         
-            byte[] msg = new byte[13 + dataSize];
-            msg[0] = msgtype;
-            BitConverter.GetBytes(sourceB.Length).CopyTo(msg, 1);
-            BitConverter.GetBytes(destB.Length).CopyTo(msg, 5);
-            BitConverter.GetBytes(messageB.Length).CopyTo(msg, 9);
+        ////    // Header - 1+4+4+4         
+        ////    byte[] msg = new byte[13 + dataSize];
+        ////    msg[0] = msgtype;
+        ////    BitConverter.GetBytes(sourceB.Length).CopyTo(msg, 1);
+        ////    BitConverter.GetBytes(destB.Length).CopyTo(msg, 5);
+        ////    BitConverter.GetBytes(messageB.Length).CopyTo(msg, 9);
 
-            // data
-            sourceB.CopyTo(msg, 13);
-            destB.CopyTo(msg, 13 + sourceB.Length);
-            messageB.CopyTo(msg, 13 + sourceB.Length + destB.Length);
-            return msg;
-        }
+        ////    // data
+        ////    sourceB.CopyTo(msg, 13);
+        ////    destB.CopyTo(msg, 13 + sourceB.Length);
+        ////    messageB.CopyTo(msg, 13 + sourceB.Length + destB.Length);
+        ////    return msg;
+        ////}
 
-        private static byte[] FormatGetRoomsMsgReply(string[] rooms)
-        {
-            int i, n = rooms.Length;
-            byte[][] roomB = new byte[n][];
-            int msgLen = 1 + 4; // type+roomCount
-            for (i = 0; i < n; i++)
-            {
-                roomB[i] = System.Text.Encoding.UTF8.GetBytes(rooms[i]);
-                msgLen += 4 + roomB.Length;
-            }
+        ////private static byte[] FormatGetRoomsMsgReply(string[] rooms)
+        ////{
+        ////    int i, n = rooms.Length;
+        ////    byte[][] roomB = new byte[n][];
+        ////    int msgLen = 1 + 4; // type+roomCount
+        ////    for (i = 0; i < n; i++)
+        ////    {
+        ////        roomB[i] = System.Text.Encoding.UTF8.GetBytes(rooms[i]);
+        ////        msgLen += 4 + roomB.Length;
+        ////    }
 
-            // Formatting Message
-            byte[] data = new byte[msgLen];
-            data[0] = 0; // type
-            byte[] roomCntB = BitConverter.GetBytes(n);
-            roomCntB.CopyTo(data, 1);
-            int pos = 5;
-            byte[] roomBSize;
-            for (i = 0; i < n; i++)
-            {
-                roomBSize = BitConverter.GetBytes(roomB.Length);
-                roomBSize.CopyTo(data, pos);
-                pos += 4;
-                roomB[i].CopyTo(data, pos);
-                pos += roomB[i].Length;
-            }
+        ////    // Formatting Message
+        ////    byte[] data = new byte[msgLen];
+        ////    data[0] = 0; // type
+        ////    byte[] roomCntB = BitConverter.GetBytes(n);
+        ////    roomCntB.CopyTo(data, 1);
+        ////    int pos = 5;
+        ////    byte[] roomBSize;
+        ////    for (i = 0; i < n; i++)
+        ////    {
+        ////        roomBSize = BitConverter.GetBytes(roomB.Length);
+        ////        roomBSize.CopyTo(data, pos);
+        ////        pos += 4;
+        ////        roomB[i].CopyTo(data, pos);
+        ////        pos += roomB[i].Length;
+        ////    }
 
-            return data;
-        }
+        ////    return data;
+        ////}
 
         private static byte[] FormatGetRoomsMsgReply(ICollection rooms)
         {
@@ -719,9 +719,9 @@
             return data;
         }
 
-        private static byte[] FormatRoomUsers(string room)
+        private byte[] FormatRoomUsers(string room)
         {
-            RoomParams roomParams = (RoomParams)RoomBase[room];
+            RoomParams roomParams = (RoomParams)this.roomBase[room];
 
             // foreach (string roomUsr in roomParams.users)
             List<string> users = roomParams.Users;
@@ -745,6 +745,7 @@
             for (i = 0; i < n; i++)
             {
                 BitConverter.GetBytes(usrB[i].Length).CopyTo(data, pos);
+
                 // 4 bytes                
                 pos += 4;
                 usrB[i].CopyTo(data, pos);
@@ -812,7 +813,7 @@
 
         private static int ReadInt32(NetworkStream stream)
         {
-            byte[] data = new byte[4];
+            var data = new byte[4];
             stream.Read(data, 0, data.Length);
             return BitConverter.ToInt32(data, 0);
         }
@@ -820,29 +821,29 @@
         public static byte[] ReadWrappedMsg(NetworkStream stream)
         {
             int streamDataSize = ReadInt32(stream);
-            byte[] streamData = new byte[streamDataSize];
+            var streamData = new byte[streamDataSize];
             stream.Read(streamData, 0, streamDataSize);
             return streamData;
         }
 
-        private static int ReadWrappedMsg2(NetworkStream stream, ref byte[] read)
-        {
-            int streamDataSize = ReadInt32(stream);
-            if (streamDataSize >= read.Length)
-            {
-                int readSZ = stream.Read(read, 0, streamDataSize);
-                return readSZ;
-            }
-            else
-            {
-                throw new ArgumentException("Too small to read incoming data", "read");
-            }
-        }
+        ////private static int ReadWrappedMsg2(NetworkStream stream, ref byte[] read)
+        ////{
+        ////    int streamDataSize = ReadInt32(stream);
+        ////    if (streamDataSize >= read.Length)
+        ////    {
+        ////        int readSZ = stream.Read(read, 0, streamDataSize);
+        ////        return readSZ;
+        ////    }
+        ////    else
+        ////    {
+        ////        throw new ArgumentException("Too small to read incoming data", "read");
+        ////    }
+        ////}
 
         private static byte[] ReadWrappedEncMsg(NetworkStream stream, AESCSPImpl cryptor)
         {
             int streamDataSize = ReadInt32(stream);
-            byte[] streamData = new byte[streamDataSize];
+            var streamData = new byte[streamDataSize];
             stream.Read(streamData, 0, streamDataSize);
             return cryptor.Decrypt(streamData);
         }
