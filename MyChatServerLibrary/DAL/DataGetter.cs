@@ -18,9 +18,9 @@
 
         public abstract bool ValidateLoginPass(string login, string password);
 
-        public abstract bool ValidateLogin(string login);
+        public abstract bool DoesLoginExist(string login);
 
-        public abstract void AddNewLoginPass(string login, string password);
+        public abstract void AddLoginPass(string login, string password);
 
         private class Nested
         {

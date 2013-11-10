@@ -246,7 +246,7 @@
                                     // Registration without logon
                                     bytes = ReadWrappedEncMsg(stream, cryptor);
                                     ParseLogonMsg(bytes, out login, out pass);
-                                    if (!dataGetter.ValidateLogin(login))
+                                    if (!dataGetter.DoesLoginExist(login))
                                     {
                                         dataGetter.AddNewLoginPass(login, pass);
                                         stream.WriteByte(0);

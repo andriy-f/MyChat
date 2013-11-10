@@ -18,12 +18,12 @@
             return Logins[login] == password;
         }
 
-        public override bool ValidateLogin(string login)
+        public override bool DoesLoginExist(string login)
         {
             return Logins.ContainsKey(login);
         }
 
-        public override void AddNewLoginPass(string login, string password)
+        public override void AddLoginPass(string login, string password)
         {
             Logins[login] = password;
         }
