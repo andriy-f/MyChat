@@ -78,7 +78,7 @@
             this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
             this.notifyIcon1.Text = "MyChat Server";
             this.notifyIcon1.Visible = true;
-            this.notifyIcon1.Click += new System.EventHandler(this.notifyIcon1_Click);
+            this.notifyIcon1.Click += new System.EventHandler(this.NotifyIcon1Click);
             // 
             // loginsBindingSource
             // 
@@ -196,7 +196,7 @@
             this.bUpdate.TabIndex = 4;
             this.bUpdate.Text = "Update";
             this.bUpdate.UseVisualStyleBackColor = true;
-            this.bUpdate.Click += new System.EventHandler(this.bUpdate_Click);
+            this.bUpdate.Click += new System.EventHandler(this.BUpdateClick);
             // 
             // bRefresh
             // 
@@ -207,7 +207,7 @@
             this.bRefresh.TabIndex = 5;
             this.bRefresh.Text = "Refresh";
             this.bRefresh.UseVisualStyleBackColor = true;
-            this.bRefresh.Click += new System.EventHandler(this.bRefresh_Click);
+            this.bRefresh.Click += new System.EventHandler(this.BRefreshClick);
             // 
             // tpConnection
             // 
@@ -329,7 +329,7 @@
             this.bApply.TabIndex = 15;
             this.bApply.Text = "Apply";
             this.bApply.UseVisualStyleBackColor = true;
-            this.bApply.Click += new System.EventHandler(this.bApply_Click);
+            this.bApply.Click += new System.EventHandler(this.BApplyClick);
             // 
             // bExit
             // 
@@ -340,7 +340,7 @@
             this.bExit.TabIndex = 14;
             this.bExit.Text = "Exit";
             this.bExit.UseVisualStyleBackColor = true;
-            this.bExit.Click += new System.EventHandler(this.bExit_Click);
+            this.bExit.Click += new System.EventHandler(this.BExitClick);
             // 
             // cmsChatServer
             // 
@@ -356,21 +356,21 @@
             this.tsmiConfig.Name = "tsmiConfig";
             this.tsmiConfig.Size = new System.Drawing.Size(152, 22);
             this.tsmiConfig.Text = "Config";
-            this.tsmiConfig.Click += new System.EventHandler(this.tsmiConfig_Click);
+            this.tsmiConfig.Click += new System.EventHandler(this.TsmiConfigClick);
             // 
             // tsmiLog
             // 
             this.tsmiLog.Name = "tsmiLog";
             this.tsmiLog.Size = new System.Drawing.Size(152, 22);
             this.tsmiLog.Text = "Log";
-            this.tsmiLog.Click += new System.EventHandler(this.tsmiLog_Click);
+            this.tsmiLog.Click += new System.EventHandler(this.TsmiLogClick);
             // 
             // tsmiExit
             // 
             this.tsmiExit.Name = "tsmiExit";
             this.tsmiExit.Size = new System.Drawing.Size(152, 22);
             this.tsmiExit.Text = "Exit";
-            this.tsmiExit.Click += new System.EventHandler(this.tsmiExit_Click);
+            this.tsmiExit.Click += new System.EventHandler(this.TsmiExitClick);
             // 
             // ServerConfig
             // 
@@ -382,8 +382,8 @@
             this.Controls.Add(this.tabControl1);
             this.Name = "ServerConfig";
             this.Text = "Chat Server Configuration";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ServerConfig_FormClosing);
-            this.Load += new System.EventHandler(this.ServerConfig_Load);
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ServerConfigFormClosing);
+            this.Load += new System.EventHandler(this.ServerConfigLoad);
             ((System.ComponentModel.ISupportInitialize)(this.loginsBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.chatServerDataSet)).EndInit();
             this.tabControl1.ResumeLayout(false);

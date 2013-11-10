@@ -26,7 +26,7 @@
 
         private readonly Dictionary<string, ChatClient> clients = new Dictionary<string, ChatClient>(10); // login/ChatClient
 
-        private readonly Hashtable roomBase = new Hashtable(3); // room/RoomParams
+        private readonly Dictionary<string, RoomParams> roomBase = new Dictionary<string, RoomParams>(); // room/RoomParams
         
         private readonly List<string> unusedClients = new List<string>(5);
 
@@ -381,7 +381,7 @@
                                 var senderClient = this.clients[source];
                                 if (senderClient.Rooms.Contains(dest))
                                 {
-                                    var roomParams = (RoomParams)this.roomBase[dest];
+                                    var roomParams = this.roomBase[dest];
                                     foreach (string roomUsr in roomParams.Users)
                                     {
                                         var destinationClient = this.clients[roomUsr];
@@ -560,36 +560,33 @@
 
         private bool AddRoom(string room, string pass)
         {
-            if (!this.roomBase.Contains(room))
-            {
-                RoomParams newrp = new RoomParams();
-                newrp.Password = pass;
-                this.roomBase.Add(room, newrp);
-                return true;
-            }
-            else
+            if (this.roomBase.ContainsKey(room))
             {
                 return false;
             }
+
+            var newrp = new RoomParams { Password = pass };
+            this.roomBase.Add(room, newrp);
+            return true;
         }
 
         private void AddUserToRoom(string room, string login)
         {
             this.clients[login].Rooms.Add(room);
-            ((RoomParams)this.roomBase[room]).Users.Add(login);
+            this.roomBase[room].Users.Add(login);
         }
 
         private void RemoveClient(string login)
         {
             // Removes client from cliBase and every room, if room empty -> free it
             this.clients.Remove(login);
-            foreach (DictionaryEntry de in this.roomBase)
+            foreach (var de in this.roomBase)
             {
-                var rp = (RoomParams)de.Value;
+                var rp = de.Value;
                 rp.Users.Remove(login);
                 if (rp.Users.Count == 0)
                 {
-                    this.unusedRooms.Add((string)de.Key);
+                    this.unusedRooms.Add(de.Key);
                 }
             }
 
@@ -603,8 +600,8 @@
 
         private void RemoveClientFromRoom(string login, string room)
         {
-            ((ChatClient)this.clients[login]).Rooms.Remove(room);
-            ((RoomParams)this.roomBase[room]).Users.Remove(login);
+            this.clients[login].Rooms.Remove(room);
+            this.roomBase[room].Users.Remove(login);
         }
 
         // static void cleanupRooms()
@@ -625,7 +622,7 @@
 
         private bool ConfirmRoomPass(string room, string pass)
         {
-            return ((RoomParams)this.roomBase[room]).Password == pass;
+            return this.roomBase[room].Password == pass;
         }
 
         #endregion
@@ -721,14 +718,14 @@
 
         private byte[] FormatRoomUsers(string room)
         {
-            RoomParams roomParams = (RoomParams)this.roomBase[room];
+            var roomParams = this.roomBase[room];
 
             // foreach (string roomUsr in roomParams.users)
-            List<string> users = roomParams.Users;
+            var users = roomParams.Users;
 
             int i, n = users.Count;
 
-            byte[][] usrB = new byte[n][];
+            var usrB = new byte[n][];
             int msgLen = 1 + 4; // type+roomCount
             for (i = 0; i < n; i++)
             {
@@ -737,9 +734,9 @@
             }
 
             // Formatting Message
-            byte[] data = new byte[msgLen];
+            var data = new byte[msgLen];
             data[0] = 0; // type
-            byte[] usrCntB = BitConverter.GetBytes(n);
+            var usrCntB = BitConverter.GetBytes(n);
             usrCntB.CopyTo(data, 1);
             int pos = 5;
             for (i = 0; i < n; i++)

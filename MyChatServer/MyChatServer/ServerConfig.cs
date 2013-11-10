@@ -11,7 +11,7 @@
             this.nudPort.Value = Convert.ToDecimal(Properties.Settings.Default.Port);            
         }
 
-        private void ServerConfig_Load(object sender, EventArgs e)
+        private void ServerConfigLoad(object sender, EventArgs e)
         {
             try
             {                
@@ -22,43 +22,43 @@
             {
                 Program.LogException(ex);
                 Program.LogForm.LogException(new Exception("Error while connecting to DB. See logfile for details"));
-                //MessageBox.Show("Error while connecting to DB");
-                //Application.Exit();
+                ////MessageBox.Show("Error while connecting to DB");
+                ////Application.Exit();
             }
         }
 
-        private void fillDBConnectionTab()
-        {
-            System.Data.SqlClient.SqlConnectionStringBuilder builder = 
-                new System.Data.SqlClient.SqlConnectionStringBuilder(
-                    Program.LoginsTableAdapterdef.Connection.ConnectionString);            
+        ////private void fillDBConnectionTab()
+        ////{
+        ////    System.Data.SqlClient.SqlConnectionStringBuilder builder = 
+        ////        new System.Data.SqlClient.SqlConnectionStringBuilder(
+        ////            Program.LoginsTableAdapterdef.Connection.ConnectionString);            
             
-            this.tbDataSource.Text=builder["Data Source"].ToString();
-            this.tbInitCat.Text=builder["Initial Catalog"].ToString();
-            this.tbUser.Text = builder["User ID"].ToString();
-            this.tbPass.Text = builder["Password"].ToString();
-            this.tbConfPass.Text=this.tbPass.Text;
-        }
+        ////    this.tbDataSource.Text=builder["Data Source"].ToString();
+        ////    this.tbInitCat.Text=builder["Initial Catalog"].ToString();
+        ////    this.tbUser.Text = builder["User ID"].ToString();
+        ////    this.tbPass.Text = builder["Password"].ToString();
+        ////    this.tbConfPass.Text=this.tbPass.Text;
+        ////}
 
-        private void bUpdate_Click(object sender, EventArgs e)
+        private void BUpdateClick(object sender, EventArgs e)
         {
             Program.LoginsTableAdapterdef.Update(this.chatServerDataSet);            
         }
 
-        private void bRefresh_Click(object sender, EventArgs e)
+        private void BRefreshClick(object sender, EventArgs e)
         {
             Program.LoginsTableAdapterdef.Fill(this.chatServerDataSet.Logins);
         }     
 
-        private void bApply_Click(object sender, EventArgs e)
+        private void BApplyClick(object sender, EventArgs e)
         {
             if (this.tbConfPass.Text == this.tbPass.Text)
             {
                 Properties.Settings.Default.Port = Convert.ToInt32(this.nudPort.Value);
 
-                System.Data.SqlClient.SqlConnectionStringBuilder builder = new System.Data.SqlClient.SqlConnectionStringBuilder();
+                var builder = new System.Data.SqlClient.SqlConnectionStringBuilder();
                 builder["Data Source"] = this.tbDataSource.Text;
-                //builder["Integrated Security"] = true;
+                ////builder["Integrated Security"] = true;
                 builder["Initial Catalog"] = this.tbInitCat.Text;
                 builder["User ID"] = this.tbUser.Text;
                 builder["Password"] = this.tbPass.Text;
@@ -66,50 +66,53 @@
                 Program.LoginsTableAdapterdef.Connection.ConnectionString = builder.ConnectionString;
 
                 Program.SaveConStr(builder.ConnectionString);
-                //Properties.Settings.Default.String1 = Crypto.Crypto1.encStrDef(builder.ConnectionString);
+                ////Properties.Settings.Default.String1 = Crypto.Crypto1.encStrDef(builder.ConnectionString);
                 Properties.Settings.Default.Save();
             }
             else
             {                
-                MessageBox.Show("DB Connection: passwords do not match");
+                MessageBox.Show(@"DB Connection: passwords do not match");
             }
         }
 
         #region User Interaction
 
-        private void notifyIcon1_Click(object sender, EventArgs e)
+        private void NotifyIcon1Click(object sender, EventArgs e)
         {
-            if (((MouseEventArgs)e).Button == System.Windows.Forms.MouseButtons.Left)
+            if (((MouseEventArgs)e).Button == MouseButtons.Left)
             {
-                this.showMe();
+                this.ShowMe();
             }
         }
 
-        private void showMe()
+        private void ShowMe()
         {
-            //if (this.WindowState == FormWindowState.Minimized)
-            //    this.WindowState = FormWindowState.Normal;
+            ////if (this.WindowState == FormWindowState.Minimized)
+            ////    this.WindowState = FormWindowState.Normal;
             if (!this.Visible)
+            {
                 this.Show();
+            }
+                
             this.Activate();
         }
 
-        private void tsmiConfig_Click(object sender, EventArgs e)
+        private void TsmiConfigClick(object sender, EventArgs e)
         {
-            this.showMe();
+            this.ShowMe();
         }
 
-        private void tsmiLog_Click(object sender, EventArgs e)
+        private void TsmiLogClick(object sender, EventArgs e)
         {
             Program.LogForm.showMe();
         }
 
-        private void tsmiExit_Click(object sender, EventArgs e)
+        private void TsmiExitClick(object sender, EventArgs e)
         {
-            this.stopServerAndExit();
+            this.StopServerAndExit();
         }
 
-        private void ServerConfig_FormClosing(object sender, FormClosingEventArgs e)
+        private void ServerConfigFormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason != CloseReason.ApplicationExitCall)
             {
@@ -118,12 +121,12 @@
             }            
         }
 
-        private void bExit_Click(object sender, EventArgs e)
+        private void BExitClick(object sender, EventArgs e)
         {
-            this.stopServerAndExit();
+            this.StopServerAndExit();
         }
  
-        private void stopServerAndExit()
+        private void StopServerAndExit()
         {
             Program.Server.Finish();
             Application.Exit();
