@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Net.Sockets;
+    using System.Runtime.CompilerServices;
 
     using Andriy.Security.Cryptography;
 
@@ -11,6 +12,8 @@
     /// </summary>
     public class ChatClient
     {
+        private const int AgreementLength = 32;
+
         private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatClient));
 
         private static readonly MyRandoms Randoms = new MyRandoms();
@@ -19,12 +22,20 @@
         /// Must be list of unique
         /// </summary>
         private readonly List<string> rooms = new List<string>(3);
-        
+
         public ChatClient(TcpClient client)
         {
             this.Tcp = client;
         }
 
+        public enum Status
+        {
+            Uninitialized,
+            Validated,
+            Encrypted,
+            LoggedOn
+        }
+        
         public List<string> Rooms
         {
             get
@@ -158,7 +169,8 @@
         ////}
 
         /// <summary>
-        /// Processes authentification attempt from new client
+        /// Check if client [application] is original, 
+        /// i.e. if it has valid private key
         /// </summary> 
         /// <returns>0 if ok, 1 if wrong</returns>
         internal int Verify()
@@ -194,12 +206,57 @@
             }
         }
 
-        public enum Status
+        /// <summary>
+        /// Sets up secure channel (this.Cryptor)
+        /// </summary>
+        /// <returns></returns>
+        public int SetUpSecureChannel()
         {
-            Uninitialized,
-            Validated,
-            Encrypted,
-            LoggedOn
+            try
+            {
+                var ecdh1 = new ECDHWrapper(AgreementLength);
+                var stream = this.Tcp.GetStream();
+                var recCliPub = this.ReadWrappedMsg();
+                WriteWrappedMsg(stream, ecdh1.PubData);
+                var agr = ecdh1.calcAgreement(recCliPub);
+
+                const int AESKeyLength = 32;
+                var aeskey = new byte[AESKeyLength];
+                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
+
+                this.Cryptor = new AESCSPImpl(aeskey, ChatServer.CryptoIv1);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
+                this.Cryptor = null;
+                return 1;
+            }
+        }
+
+        private static int ReadInt32(NetworkStream stream)
+        {
+            var data = new byte[4];
+            stream.Read(data, 0, data.Length);
+            return BitConverter.ToInt32(data, 0);
+        }
+
+        public byte[] ReadWrappedMsg()
+        {
+            var stream = this.Tcp.GetStream();
+            int streamDataSize = ReadInt32(stream);
+            var streamData = new byte[streamDataSize];
+            stream.Read(streamData, 0, streamDataSize);
+            return streamData;
+        }
+
+        public static void WriteWrappedMsg(System.IO.Stream stream, byte[] bytes)
+        {
+            var data = new byte[4 + bytes.Length];
+            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
+            bytes.CopyTo(data, 4);
+            stream.Write(data, 0, data.Length);
         }
     }
 }

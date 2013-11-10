@@ -22,7 +22,7 @@
         ////public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
         private static readonly ILog Log = LogManager.GetLogger(typeof(ChatServer));
 
-        private static readonly byte[] CryptoIv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
+        internal static readonly byte[] CryptoIv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
         private readonly Dictionary<string, ChatClient> clients = new Dictionary<string, ChatClient>(10); // login/ChatClient
 
@@ -101,16 +101,14 @@
             TcpListener tcpListener = null;
             try
             {
-                int port = this.Port;
-                var localAddr = IPAddress.Any; // System.Net.IPAddress.Parse("127.0.0.1");
-                tcpListener = new TcpListener(localAddr, port);
+                tcpListener = new TcpListener(IPAddress.Any, this.Port);
                 tcpListener.Start();
                 
                 while (this.continueToListen)
                 {
                     if (tcpListener.Pending())
                     {
-                        this.ProcessPendingConnection(tcpListener.AcceptTcpClient());
+                        this.ProcessNewConnection(tcpListener.AcceptTcpClient());
                     }
                     else
                     {
@@ -149,24 +147,24 @@
             }
         }
 
-        private void ProcessPendingConnection(TcpClient client)
+        private void ProcessNewConnection(TcpClient tcp)
         {
-            var clientIPAddress = Utils.TCPClient2IPAddress(client);
+            var clientIPAddress = Utils.TCPClient2IPAddress(tcp);
             Log.DebugFormat("Connected from {0}", clientIPAddress);
-            var stream = client.GetStream();
-            stream.ReadTimeout = 1000;
+            var clientStream = tcp.GetStream();
+            clientStream.ReadTimeout = 1000;
 
             try
             {
-                var chatClient = new ChatClient(client);
+                var chatClient = new ChatClient(tcp);
                 int authatt = chatClient.Verify();
                 switch (authatt)
                 {
                     case 0:
-                        AESCSPImpl cryptor;
-                        if (ProcessAgreement(stream, out cryptor) == 0)
+                        if (chatClient.SetUpSecureChannel() == 0)
                         {
-                            var type = (byte)stream.ReadByte();
+
+                            var type = (byte)clientStream.ReadByte();
                             string login, pass;
                             byte[] bytes;
                             switch (type)
@@ -174,7 +172,7 @@
                                 case 0:
 
                                     // Logon attempt
-                                    bytes = ReadWrappedEncMsg(stream, cryptor);
+                                    bytes = ReadWrappedEncMsg(clientStream, chatClient.Cryptor);
                                     ParseLogonMsg(bytes, out login, out pass);
                                     if (this.dataGetter.ValidateLoginPass(login, pass))
                                     {
@@ -200,8 +198,8 @@
                                             if (oldresp == 10)
                                             {
                                                 // Client with login <login> still alive -> new login attempt invalid
-                                                stream.WriteByte(1);
-                                                FreeTCPClient(client);
+                                                clientStream.WriteByte(1);
+                                                FreeTCPClient(tcp);
                                                 Log.DebugFormat(
                                                         "Logon from IP '{0}' failed: User '{1}' already logged on", 
                                                         clientIPAddress, 
@@ -212,7 +210,7 @@
                                                 // old client with login <login> dead -> dispose of him and connect new
                                                 FreeTCPClient(oldUserParams.Tcp);
                                                 this.RemoveClient(login);
-                                                this.ProcessAndAcceptNewClient(client, login, cryptor);
+                                                this.ProcessAndAcceptNewClient(tcp, login, chatClient.Cryptor);
                                                 Log.DebugFormat(
                                                         "Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)", 
                                                         clientIPAddress, 
@@ -221,7 +219,7 @@
                                         }
                                         else
                                         {
-                                            this.ProcessAndAcceptNewClient(client, login, cryptor);
+                                            this.ProcessAndAcceptNewClient(tcp, login, chatClient.Cryptor);
                                             Log.DebugFormat(
                                                     "Logon from IP '{0}' success: User '{1}' from IP  logged on", 
                                                     clientIPAddress, 
@@ -230,8 +228,8 @@
                                     }
                                     else
                                     {
-                                        stream.WriteByte(2);
-                                        FreeTCPClient(client);
+                                        clientStream.WriteByte(2);
+                                        FreeTCPClient(tcp);
                                         Log.DebugFormat(
                                                 "Logon from IP '{0}' failed: Login '{1}'//Password not recognized", 
                                                 clientIPAddress, 
@@ -242,21 +240,21 @@
                                 case 1:
 
                                     // Registration without logon
-                                    bytes = ReadWrappedEncMsg(stream, cryptor);
+                                    bytes = ReadWrappedEncMsg(clientStream, chatClient.Cryptor);
                                     ParseLogonMsg(bytes, out login, out pass);
                                     if (!this.dataGetter.LoginExists(login))
                                     {
                                         this.dataGetter.AddUser(login, pass);
-                                        stream.WriteByte(0);
+                                        clientStream.WriteByte(0);
                                         Log.DebugFormat("Registration success: User '{0}' registered", login);
                                     }
                                     else
                                     {
-                                        stream.WriteByte(1);
+                                        clientStream.WriteByte(1);
                                         Log.DebugFormat("Registration failed: User '{0}' already registered", login);
                                     }
 
-                                    FreeTCPClient(client);
+                                    FreeTCPClient(tcp);
                                     break;
                                 default:
 
@@ -267,7 +265,7 @@
 
                         break;
                     case 1:
-                        FreeTCPClient(client);
+                        FreeTCPClient(tcp);
                         Log.DebugFormat("Auth from IP '{0}' fail because client is not legit", clientIPAddress);
                         
                         // TODO: Ban IP if too many attempts...
@@ -277,7 +275,7 @@
             catch (Exception ex)
             {
                 Log.Error(new Exception(string.Format("New connetion from IP {0} failed", clientIPAddress), ex));
-                FreeTCPClient(client);
+                FreeTCPClient(tcp);
 
                 // Ban IP ipAddress...
             }
@@ -286,31 +284,7 @@
         #endregion
 
         #region Processors
-
-        private static int ProcessAgreement(NetworkStream stream, out AESCSPImpl cryptor)
-        {
-            try
-            {
-                var ecdh1 = new ECDHWrapper(AgreementLength);
-                byte[] recCliPub = ReadWrappedMsg(stream);
-                WriteWrappedMsg(stream, ecdh1.PubData);
-                byte[] agr = ecdh1.calcAgreement(recCliPub);
-
-                const int AESKeyLength = 32;
-                var aeskey = new byte[AESKeyLength];
-                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
-
-                cryptor = new AESCSPImpl(aeskey, CryptoIv1);
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
-                cryptor = null;
-                return 1;
-            }
-        }
-
+        
         private void ProcessAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
         {
             var chatClient = new ChatClient(client);
