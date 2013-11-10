@@ -3,6 +3,7 @@
     using System;
     using System.Windows.Forms;
 
+    using Andriy.MyChat.Server.DAL;
     using Andriy.Security.Cryptography;
 
     public static class Program
@@ -38,7 +39,7 @@
             AppDomain.CurrentDomain.UnhandledException += (sender, e) => LogException(e.ExceptionObject as Exception);
             Application.ThreadException += (sender, e) => LogException(e.Exception);
 
-            ChatServer.init(Properties.Settings.Default.Port); // must catch invalid pass 
+            ChatServer.Init(DataGetter.Instance,  Properties.Settings.Default.Port); // must catch invalid pass 
             
             // Init ServerConfig Form            
             new ServerConfig();

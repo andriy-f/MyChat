@@ -17,7 +17,7 @@
             this._loginsTableAdapter = loginsTableAdapter;
         }
 
-        public override bool DoesLoginExist(string login)
+        public override bool LoginExists(string login)
         {
             return (int)this._loginsTableAdapter.isLoginInBase(login) > 0;
         }
@@ -28,7 +28,7 @@
         }
 
 
-        public override void AddLoginPass(string login, string password)
+        public override void AddUser(string login, string password)
         {
             this._loginsTableAdapter.addNewLoginPass(login, password);
         }

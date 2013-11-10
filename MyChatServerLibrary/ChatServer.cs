@@ -50,9 +50,9 @@
 
         #region Init&Free
 
-        public static void init(int port)
+        public static void Init(DataGetter newDataGetter, int port)
         {
-            dataGetter = DataGetter.Instance;
+            dataGetter = newDataGetter;
 
             Port = port;
             
@@ -246,9 +246,9 @@
                                     // Registration without logon
                                     bytes = ReadWrappedEncMsg(stream, cryptor);
                                     ParseLogonMsg(bytes, out login, out pass);
-                                    if (!dataGetter.DoesLoginExist(login))
+                                    if (!dataGetter.LoginExists(login))
                                     {
-                                        dataGetter.AddNewLoginPass(login, pass);
+                                        dataGetter.AddUser(login, pass);
                                         stream.WriteByte(0);
                                         Log.DebugFormat("Registration success: User '{0}' registered", login);
                                     }
