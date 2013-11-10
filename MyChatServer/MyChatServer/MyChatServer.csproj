@@ -62,8 +62,9 @@
     <Reference Include="BouncyCastle.Crypto">
       <HintPath>..\..\packages\BouncyCastle.1.7.0\lib\Net40-Client\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
-    <Reference Include="log4net">
-      <HintPath>..\..\packages\log4net.2.0.0\lib\net40-full\log4net.dll</HintPath>
+    <Reference Include="log4net, Version=1.2.12.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\log4net.2.0.2\lib\net40-full\log4net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -79,42 +80,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\_Common\src\Crypto\AESCSPImpl.cs">
-      <Link>Crypto\AESCSPImpl.cs</Link>
-    </Compile>
-    <Compile Include="..\..\_Common\src\Crypto\ECDHWrapper.cs">
-      <Link>Crypto\ECDHWrapper.cs</Link>
-    </Compile>
-    <Compile Include="..\..\_Common\src\Crypto\ECDSAWrapper.cs">
-      <Link>Crypto\ECDSAWrapper.cs</Link>
-    </Compile>
-    <Compile Include="..\..\_Common\src\Formatting\HexRep.cs">
-      <Link>Formatting\HexRep.cs</Link>
-    </Compile>
-    <Compile Include="ChatClient.cs" />
-    <Compile Include="ChatServer.cs" />
-    <Compile Include="..\..\_Common\src\Crypto\CryptoCmn.cs">
-      <Link>Crypto\CryptoCmn.cs</Link>
-    </Compile>
     <Compile Include="ChatServerDataSet.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
     </Compile>
-    <Compile Include="Consts.cs" />
-    <Compile Include="Crypto\Utils.cs" />
-    <Compile Include="DAL\DataGetter.cs" />
-    <Compile Include="DAL\MSSQLDataGetter.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="DAL\PredefinedDataGetter.cs" />
+    <Compile Include="DAL\MSSQLDataGetter.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="LogForm.Designer.cs">
       <DependentUpon>LogForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="RoomParams.cs" />
     <Compile Include="ServerConfig.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -123,7 +100,6 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utils.cs" />
     <EmbeddedResource Include="LogForm.resx">
       <DependentUpon>LogForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -207,7 +183,12 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\..\MyChatServerLibrary\MyChatServerLibrary.csproj">
+      <Project>{937810c7-d05c-48b3-99b6-0d04957ea422}</Project>
+      <Name>MyChatServerLibrary</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

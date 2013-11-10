@@ -6,6 +6,7 @@
     using System.IO;
     using System.Net;
     using System.Net.Sockets;
+    using System.Runtime.Remoting.Messaging;
     using System.Threading;
 
     using Andriy.MyChat.Server.DAL;
@@ -19,6 +20,8 @@
 
         ////public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
 
+        private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatServer));
+        
         private static readonly Dictionary<string, ChatClient> ClientBase = new Dictionary<string, ChatClient>(10); // login/ChatClient
 
         private static readonly Hashtable RoomBase = new Hashtable(3); // room/RoomParams
@@ -36,18 +39,22 @@
         private static DataGetter dataGetter;
 
         private static bool continueToListen = true;
-
+        
         //// static ECDSAWrapper seanceDsaClientChecker;//checks client's messages
         
         //// static ECDSAWrapper seanceDsaServerSigner;//signs servers messages
         
+        public static int Port { get; private set; }
+
         #endregion
 
         #region Init&Free
 
-        public static void init()
+        public static void init(int port)
         {
             dataGetter = DataGetter.Instance;
+
+            Port = port;
             
             ClientBase.Clear();
 
@@ -62,7 +69,7 @@
                                  Priority = ThreadPriority.Lowest
                              };
             listenerThread.Start();
-            Program.LogEvent("Listening started");
+            Log.Info("Listening started");
         }
 
         public static void Finish()
@@ -96,7 +103,7 @@
             TcpListener tcpListener = null;
             try
             {
-                int port = Properties.Settings.Default.Port;
+                int port = Port;
                 var localAddr = IPAddress.Any; // System.Net.IPAddress.Parse("127.0.0.1");
                 tcpListener = new TcpListener(localAddr, port);
                 tcpListener.Start();
@@ -131,7 +138,7 @@
             }
             catch (Exception e)
             {
-                Program.LogException(e);
+                Log.Error(e);
             }
             finally
             {
@@ -140,14 +147,14 @@
                     tcpListener.Stop();
                 }
 
-                Program.LogEvent("Listening finished");
+                Log.Info("Listening finished");
             }
         }
 
         private static void ProcessPendingConnection(TcpClient client)
         {
             var clientIPAddress = Utils.TCPClient2IPAddress(client);
-            Program.LogEvent(string.Format("Connected from {0}", clientIPAddress));
+            Log.DebugFormat("Connected from {0}", clientIPAddress);
             var stream = client.GetStream();
             stream.ReadTimeout = 1000;
 
@@ -197,11 +204,10 @@
                                                 // Client with login <login> still alive -> new login attempt invalid
                                                 stream.WriteByte(1);
                                                 FreeTCPClient(client);
-                                                Program.LogEvent(
-                                                    string.Format(
+                                                Log.DebugFormat(
                                                         "Logon from IP '{0}' failed: User '{1}' already logged on", 
                                                         clientIPAddress, 
-                                                        login));
+                                                        login);
                                             }
                                             else
                                             {
@@ -209,32 +215,29 @@
                                                 FreeTCPClient(oldUserParams.Tcp);
                                                 removeClient(login);
                                                 ProcessAndAcceptNewClient(client, login, cryptor);
-                                                Program.LogEvent(
-                                                    string.Format(
+                                                Log.DebugFormat(
                                                         "Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)", 
                                                         clientIPAddress, 
-                                                        login));
+                                                        login);
                                             }
                                         }
                                         else
                                         {
                                             ProcessAndAcceptNewClient(client, login, cryptor);
-                                            Program.LogEvent(
-                                                string.Format(
+                                            Log.DebugFormat(
                                                     "Logon from IP '{0}' success: User '{1}' from IP  logged on", 
                                                     clientIPAddress, 
-                                                    login));
+                                                    login);
                                         }
                                     }
                                     else
                                     {
                                         stream.WriteByte(2);
                                         FreeTCPClient(client);
-                                        Program.LogEvent(
-                                            string.Format(
+                                        Log.DebugFormat(
                                                 "Logon from IP '{0}' failed: Login '{1}'//Password not recognized", 
                                                 clientIPAddress, 
-                                                login));
+                                                login);
                                     }
 
                                     break;
@@ -247,14 +250,12 @@
                                     {
                                         dataGetter.AddNewLoginPass(login, pass);
                                         stream.WriteByte(0);
-                                        Program.LogEvent(
-                                            string.Format("Registration success: User '{0}' registered", login));
+                                        Log.DebugFormat("Registration success: User '{0}' registered", login);
                                     }
                                     else
                                     {
                                         stream.WriteByte(1);
-                                        Program.LogEvent(
-                                            string.Format("Registration failed: User '{0}' already registered", login));
+                                        Log.DebugFormat("Registration failed: User '{0}' already registered", login);
                                     }
 
                                     FreeTCPClient(client);
@@ -269,7 +270,7 @@
                         break;
                     case 1:
                         FreeTCPClient(client);
-                        Program.LogEvent(string.Format("Auth from IP '{0}' fail because client is not legit", clientIPAddress));
+                        Log.DebugFormat("Auth from IP '{0}' fail because client is not legit", clientIPAddress);
                         
                         // TODO: Ban IP if too many attempts...
                         break;
@@ -277,7 +278,7 @@
             }
             catch (Exception ex)
             {
-                Program.LogException(new Exception(string.Format("New connetion from IP {0} failed", clientIPAddress), ex));
+                Log.Error(new Exception(string.Format("New connetion from IP {0} failed", clientIPAddress), ex));
                 FreeTCPClient(client);
 
                 // Ban IP ipAddress...
@@ -350,7 +351,7 @@
             }
             catch (Exception ex)
             {
-                Program.LogEvent(string.Format("Error while completing agreement: {0}{1}", Environment.NewLine, ex));
+                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
                 cryptor = null;
                 return 1;
             }
@@ -376,7 +377,7 @@
                             case 3: // Message to room
                                 data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseChatMsg(data, out source, out dest, out messg); // dest - room
-                                Program.LogEvent(string.Format("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
+                                Log.DebugFormat("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
 
                                 // if user(source) in room(dest)
                                 var senderClient = ClientBase[source];
@@ -411,7 +412,7 @@
                             case 4: // Message to user
                                 data = ReadWrappedEncMsg(stream, chatClient.Cryptor);
                                 ParseChatMsg(data, out source, out dest, out messg); // dest - user
-                                Program.LogEvent(string.Format("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
+                                Log.DebugFormat("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
                                 if (ClientBase.ContainsKey(dest))
                                 {
                                     var destinationClient = ClientBase[dest];
@@ -441,7 +442,7 @@
 
                                 // Display to all
                                 ParseChatMsg(data, out source, out dest, out messg);
-                                Program.LogEvent(string.Format("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg));
+                                Log.DebugFormat("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
                                 foreach (var destDE in ClientBase)
                                 {
                                     var destinationClient = destDE.Value;
@@ -472,22 +473,20 @@
                                         // Allow join 
                                         AddUserToRoom(room, clientLogin);
                                         stream.WriteByte(0); // Success
-                                        Program.LogEvent(
-                                            string.Format(
+                                        Log.DebugFormat(
                                                 "User '{0}' joined room '{1}' with pass '{2}'", 
                                                 clientLogin, 
                                                 room, 
-                                                pass));
+                                                pass);
                                     }
                                     else
                                     {
                                         stream.WriteByte(1); // Room Exist, invalid pass
-                                        Program.LogEvent(
-                                            string.Format(
+                                        Log.DebugFormat(
                                                 "User '{0}' failed to join room '{1}' because invalid pass '{2}'", 
                                                 clientLogin, 
                                                 room, 
-                                                pass));
+                                                pass);
                                     }
                                 }
                                 else
@@ -496,12 +495,11 @@
                                     AddRoom(room, pass);
                                     AddUserToRoom(room, clientLogin);
                                     stream.WriteByte(0); // Success
-                                    Program.LogEvent(
-                                        string.Format(
+                                    Log.DebugFormat(
                                             "User '{0}' joined new room '{1}' with pass '{2}'", 
                                             clientLogin, 
                                             room, 
-                                            pass));
+                                            pass);
                                 }
 
                                 break;
@@ -511,28 +509,27 @@
                                 // Free Resources
                                 ClientsToFree.Add(clientLogin);
                                 FreeTCPClient(client);
-                                Program.LogEvent(string.Format("Client '{0}' performed Logout", clientLogin));
+                                Log.DebugFormat("Client '{0}' performed Logout", clientLogin);
                                 break;
                             case 8: // Get Rooms                                        
                                 data = FormatGetRoomsMsgReply(RoomBase.Keys);
                                 stream.WriteByte(8);
                                 WriteWrappedMsg(stream, data);
-                                Program.LogEvent(string.Format("Client '{0}' requested rooms", clientLogin));
+                                Log.DebugFormat("Client '{0}' requested rooms", clientLogin);
                                 break;
                             case 9: // Leave room
                                 data = ReadWrappedMsg(stream);
                                 string leaveroom = ParseLeaveRoomMsg(data);
                                 RemoveClientFromRoom(clientLogin, leaveroom);
                                 stream.WriteByte(0); // approve - need?
-                                Program.LogEvent(
-                                    string.Format("Client '{0}' leaved room '{1}'", clientLogin, leaveroom));
+                                Log.DebugFormat("Client '{0}' leaved room '{1}'", clientLogin, leaveroom);
                                 break;
                             case 11: // Get Room users
                                 string roomname = System.Text.Encoding.UTF8.GetString(ReadWrappedMsg(stream));
                                 data = FormatRoomUsers(roomname);
                                 stream.WriteByte(11);
                                 WriteWrappedMsg(stream, data);
-                                Program.LogEvent(string.Format("Client '{0}' requested room users", clientLogin));
+                                Log.DebugFormat("Client '{0}' requested room users", clientLogin);
                                 break;
                             default: // Invalid message from client
                                 throw new Exception("Client send unknown token");
@@ -541,13 +538,12 @@
                     catch (Exception ex)
                     {
                         // Invalid data from current client
-                        Program.LogEvent(
-                            string.Format(
+                        Log.DebugFormat(
                                 "Received invalid data from client with login '{1}', IP '{2}'-> kick.{0}Reason:{0}{3}", 
                                 Environment.NewLine, 
                                 clientLogin, 
                                 Utils.TCPClient2IPAddress(client), 
-                                ex));
+                                ex);
                         ClientsToFree.Add(clientLogin);
                         FreeTCPClient(client);
                     }

@@ -11,6 +11,8 @@
     /// </summary>
     public class ChatClient
     {
+        private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatClient));
+
         private static readonly MyRandoms Randoms = new MyRandoms();
 
         /// <summary>
@@ -187,7 +189,7 @@
             }
             catch (Exception ex)
             {
-                Program.LogEvent(string.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
+                Log.DebugFormat("Error while authentificating: {0}{1}", Environment.NewLine, ex);
                 return 1;
             }
         }

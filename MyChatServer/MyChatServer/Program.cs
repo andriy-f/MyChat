@@ -5,7 +5,7 @@
 
     using Andriy.Security.Cryptography;
 
-    static class Program
+    public static class Program
     {
         #region Fields
 
@@ -37,7 +37,7 @@
             AppDomain.CurrentDomain.UnhandledException += (sender, e) => LogException(e.ExceptionObject as Exception);
             Application.ThreadException += (sender, e) => LogException(e.Exception);
 
-            ChatServer.init(); // must catch invalid pass 
+            ChatServer.init(Properties.Settings.Default.Port); // must catch invalid pass 
             
             // Init ServerConfig Form            
             new ServerConfig();
