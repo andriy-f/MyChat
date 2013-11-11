@@ -42,7 +42,7 @@
             Application.ThreadException += (sender, e) => LogException(e.Exception);
 
             Server = new ChatServer();
-            Server.Init(DataGetter.Instance,  Properties.Settings.Default.Port); // must catch invalid pass 
+            Server.Init(DataContext.Instance,  Properties.Settings.Default.Port); // must catch invalid pass 
             
             // Init ServerConfig Form            
             new ServerConfig();

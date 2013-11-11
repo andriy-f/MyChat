@@ -251,6 +251,15 @@
             return streamData;
         }
 
+        public byte[] ReadWrappedEncMsg()
+        {
+            var stream = this.Tcp.GetStream();
+            int streamDataSize = ReadInt32(stream);
+            var streamData = new byte[streamDataSize];
+            stream.Read(streamData, 0, streamDataSize);
+            return this.Cryptor.Decrypt(streamData);
+        }
+
         public static void WriteWrappedMsg(System.IO.Stream stream, byte[] bytes)
         {
             var data = new byte[4 + bytes.Length];

@@ -85,7 +85,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
     </Compile>
-    <Compile Include="DAL\MSSQLDataGetter.cs" />
+    <Compile Include="DAL\MssqlDataContext.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
     </Compile>

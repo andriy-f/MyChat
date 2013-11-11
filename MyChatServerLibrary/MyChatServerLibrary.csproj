@@ -64,8 +64,9 @@
     <Compile Include="ChatServer.cs" />
     <Compile Include="Consts.cs" />
     <Compile Include="Crypto\Utils.cs" />
-    <Compile Include="DAL\DataGetter.cs" />
-    <Compile Include="DAL\PredefinedDataGetter.cs" />
+    <Compile Include="DAL\DataContext.cs" />
+    <Compile Include="DAL\IDataContext.cs" />
+    <Compile Include="DAL\MemoryDataContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RoomParams.cs" />
     <Compile Include="Utils.cs" />

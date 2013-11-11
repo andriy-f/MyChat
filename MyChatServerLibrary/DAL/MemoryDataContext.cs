@@ -2,11 +2,11 @@
 {
     using System.Collections.Concurrent;
 
-    public class PredefinedDataGetter : DataGetter
+    public class MemoryDataContext : DataContext
     {
         private static readonly ConcurrentDictionary<string, string> Logins = new ConcurrentDictionary<string, string>(); 
 
-        static PredefinedDataGetter()
+        static MemoryDataContext()
         {
             Logins.TryAdd("admin", "qwe`123");
             Logins.TryAdd("user1", "qwe`123");

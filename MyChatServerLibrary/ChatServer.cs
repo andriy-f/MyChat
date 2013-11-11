@@ -34,7 +34,7 @@
 
         private Thread listenerThread;
 
-        private DataGetter dataGetter;
+        private DataContext dataContext;
 
         private bool continueToListen = true;
         
@@ -61,9 +61,9 @@
             }
         }
 
-        public void Init(DataGetter newDataGetter, int port)
+        public void Init(DataContext newDataContext, int port)
         {
-            this.dataGetter = newDataGetter;
+            this.dataContext = newDataContext;
 
             this.Port = port;
             
@@ -163,7 +163,6 @@
                     case 0:
                         if (chatClient.SetUpSecureChannel() == 0)
                         {
-
                             var type = (byte)clientStream.ReadByte();
                             string login, pass;
                             byte[] bytes;
@@ -172,9 +171,9 @@
                                 case 0:
 
                                     // Logon attempt
-                                    bytes = ReadWrappedEncMsg(clientStream, chatClient.Cryptor);
+                                    bytes = chatClient.ReadWrappedEncMsg();
                                     ParseLogonMsg(bytes, out login, out pass);
-                                    if (this.dataGetter.ValidateLoginPass(login, pass))
+                                    if (this.dataContext.ValidateLoginPass(login, pass))
                                     {
                                         if (this.IsLogged(login))
                                         {
@@ -182,7 +181,7 @@
                                             int oldresp = -2;
                                             if (oldUserParams.Tcp.Connected)
                                             {
-                                                NetworkStream oldStream = oldUserParams.Tcp.GetStream();
+                                                var oldStream = oldUserParams.Tcp.GetStream();
 
                                                 try
                                                 {
@@ -242,9 +241,9 @@
                                     // Registration without logon
                                     bytes = ReadWrappedEncMsg(clientStream, chatClient.Cryptor);
                                     ParseLogonMsg(bytes, out login, out pass);
-                                    if (!this.dataGetter.LoginExists(login))
+                                    if (!this.dataContext.LoginExists(login))
                                     {
-                                        this.dataGetter.AddUser(login, pass);
+                                        this.dataContext.AddUser(login, pass);
                                         clientStream.WriteByte(0);
                                         Log.DebugFormat("Registration success: User '{0}' registered", login);
                                     }

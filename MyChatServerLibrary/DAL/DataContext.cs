@@ -2,13 +2,15 @@
 {
     using System.Diagnostics.CodeAnalysis;
 
-    public abstract class DataGetter
+    public abstract class DataContext : IDataContext
     {
-        protected DataGetter()
+        // ReSharper disable EmptyConstructor
+        protected DataContext()
+            // ReSharper restore EmptyConstructor
         {
         }
 
-        public static DataGetter Instance
+        public static DataContext Instance
         {
             get
             {
@@ -24,7 +26,7 @@
 
         private class Nested
         {
-            internal static readonly DataGetter DataInstance = new PredefinedDataGetter();
+            internal static readonly DataContext DataInstance = new MemoryDataContext();
             
             // Explicit static constructor to tell C# compiler
             // not to mark type as beforefieldinit

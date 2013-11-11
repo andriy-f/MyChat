@@ -2,17 +2,17 @@
 {
     using Andriy.MyChat.Server.ChatServerDataSetTableAdapters;
 
-    class MSSQLDataGetter : DataGetter
+    class MssqlDataContext : DataContext
     {
         private LoginsTableAdapter _loginsTableAdapter;
 
-        private MSSQLDataGetter(string connectionString)
+        private MssqlDataContext(string connectionString)
         {
             this._loginsTableAdapter = new LoginsTableAdapter();
             this._loginsTableAdapter.Connection.ConnectionString = connectionString;
         }
 
-        private MSSQLDataGetter(LoginsTableAdapter loginsTableAdapter)
+        private MssqlDataContext(LoginsTableAdapter loginsTableAdapter)
         {
             this._loginsTableAdapter = loginsTableAdapter;
         }
