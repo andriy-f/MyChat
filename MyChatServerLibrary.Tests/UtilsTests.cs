@@ -1,5 +1,6 @@
 ﻿namespace Andriy.MyChat.Server.Tests
 {
+    using System.Linq;
     using System.Net.Sockets;
 
     using NUnit.Framework;
@@ -10,10 +11,12 @@
         [Test]
         public void TCPClient2IPAddressTest()
         {
-            var tcpClient = new TcpClient("google.com", 80);
+            const string HostName = "google.com";
+            var tcpClient = new TcpClient(HostName, 80);
             var actual = Utils.TCPClient2IPAddress(tcpClient);
             tcpClient.Close();
-            Assert.AreEqual("173.194.39.71", actual.MapToIPv4().ToString());
+            var expectedList = System.Net.Dns.GetHostEntry(HostName).AddressList;
+            Assert.IsTrue(expectedList.Contains(actual));
         }
     }
 }
