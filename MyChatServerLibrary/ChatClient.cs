@@ -16,8 +16,6 @@
 
         private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatClient));
 
-        private static readonly MyRandoms Randoms = new MyRandoms();
-
         /// <summary>
         /// Must be list of unique
         /// </summary>
@@ -180,7 +178,7 @@
                 var stream = this.Tcp.GetStream();
                 
                 // Check if client is legit
-                var send = Randoms.genSecureRandomBytes(100);
+                var send = MyRandoms.GenerateSecureRandomBytes(100);
                 ChatServer.WriteWrappedMsg(stream, send);
                 var rec = ChatServer.ReadWrappedMsg(stream);
 
