@@ -176,46 +176,7 @@
         ////        //Ban IP ipAddress...
         ////    }
         ////}
-
-        /// <summary>
-        /// Check if client [application] is original, 
-        /// i.e. if it has valid private key
-        /// </summary> 
-        /// <returns>0 if ok, 1 if wrong</returns>
-        internal int Verify()
-        {
-            try
-            {
-                var stream = this.tcpStream;
-                
-                // Check if client is legit
-                var send = MyRandoms.GenerateSecureRandomBytes(100);
-                ChatServer.WriteWrappedMsg(stream, send);
-                var rec = ChatServer.ReadWrappedMsg(stream);
-
-                // Program.LogEvent(HexRep.ToString(rec));
-                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
-                if (clientLegit)
-                {
-                    // Clients want to know if server is legit
-                    rec = ChatServer.ReadWrappedMsg(stream);
-                    send = Crypto.Utils.ServerSigner.signHash(rec);
-                    ChatServer.WriteWrappedMsg(stream, send);
-                    this.CurrentStatus = Status.Verified;
-                    return 0;
-                }
-                else
-                {
-                    return 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.DebugFormat("Error while authentificating: {0}{1}", Environment.NewLine, ex);
-                return 1;
-            }
-        }
-
+        
         /// <summary>
         /// Sets up secure channel (this.Cryptor)
         /// </summary>
@@ -296,6 +257,88 @@
             var bytes = this.ReadWrappedEncMsg();
             var creds = Credentials.Parse(bytes, 1);
             this.Credentials = creds;
+        }
+
+        public void FreeTCPClient()
+        {
+            if (this.Tcp != null)
+            {
+                if (this.Tcp.Connected)
+                {
+                    this.Tcp.GetStream().Close();
+                    ////this.tcpStream = null; // TODO
+                }
+
+                this.Tcp.Close();
+            }
+
+            this.CurrentStatus = Status.Freed;
+        }
+
+        public bool IsAlive()
+        {
+            if (!this.Tcp.Connected)
+            {
+                return false;
+            }
+
+            try
+            {
+                this.tcpStream.WriteByte(10);
+                if (this.ReadByte() == 10)
+                {
+                    return true;
+                }
+                else
+                {
+                    // Received something, but client inadequate
+                    return false;
+                }
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            
+        }
+
+        /// <summary>
+        /// Check if client [application] is original, 
+        /// i.e. if it has valid private key
+        /// </summary> 
+        /// <returns>0 if ok, 1 if wrong</returns>
+        internal int Verify()
+        {
+            try
+            {
+                var stream = this.tcpStream;
+
+                // Check if client is legit
+                var send = MyRandoms.GenerateSecureRandomBytes(100);
+                ChatServer.WriteWrappedMsg(stream, send);
+                var rec = ChatServer.ReadWrappedMsg(stream);
+
+                // Program.LogEvent(HexRep.ToString(rec));
+                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
+                if (clientLegit)
+                {
+                    // Clients want to know if server is legit
+                    rec = ChatServer.ReadWrappedMsg(stream);
+                    send = Crypto.Utils.ServerSigner.signHash(rec);
+                    ChatServer.WriteWrappedMsg(stream, send);
+                    this.CurrentStatus = Status.Verified;
+                    return 0;
+                }
+                else
+                {
+                    return 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.DebugFormat("Error while authentificating: {0}{1}", Environment.NewLine, ex);
+                return 1;
+            }
         }
     }
 }

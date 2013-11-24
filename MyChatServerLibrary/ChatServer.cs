@@ -175,24 +175,8 @@
                                     {
                                         if (this.IsLogged(chatClient.Credentials.Login))
                                         {
-                                            var oldUserParams = this.clients[chatClient.Credentials.Login];
-                                            int oldresp = -2;
-                                            if (oldUserParams.Tcp.Connected)
-                                            {
-                                                var oldStream = oldUserParams.Tcp.GetStream();
-
-                                                try
-                                                {
-                                                    oldStream.WriteByte(10);
-                                                    oldresp = oldStream.ReadByte();
-                                                }
-                                                catch (IOException)
-                                                {
-                                                    // Timeout - old client probably dead
-                                                }
-                                            }
-
-                                            if (oldresp == 10)
+                                            var existingClient = this.clients[chatClient.Credentials.Login];
+                                            if (existingClient.IsAlive())
                                             {
                                                 // Client with login <login> still alive -> new login attempt invalid
                                                 clientStream.WriteByte(1);
@@ -205,7 +189,7 @@
                                             else
                                             {
                                                 // old client with login <login> dead -> dispose of him and connect new
-                                                FreeTCPClient(oldUserParams.Tcp);
+                                                FreeTCPClient(existingClient.Tcp);
                                                 this.RemoveClient(chatClient.Credentials.Login);
                                                 this.ProcessAndAcceptNewClient(tcp, chatClient.Credentials.Login, chatClient.Cryptor);
                                                 Log.DebugFormat(
