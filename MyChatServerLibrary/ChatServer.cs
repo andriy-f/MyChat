@@ -34,7 +34,7 @@
 
         private Thread listenerThread;
 
-        private DataContext dataContext;
+        private IDataContext dataContext;
 
         private bool continueToListen = true;
         
@@ -163,21 +163,19 @@
                     case 0:
                         if (chatClient.SetUpSecureChannel() == 0)
                         {
-                            var type = (byte)clientStream.ReadByte();
+                            var type = chatClient.ReadByte();
                             string login, pass;
                             byte[] bytes;
                             switch (type)
                             {
                                 case 0:
-
                                     // Logon attempt
-                                    bytes = chatClient.ReadWrappedEncMsg();
-                                    ParseLogonMsg(bytes, out login, out pass);
-                                    if (this.dataContext.ValidateLoginPass(login, pass))
+                                    chatClient.ReadCredentials();
+                                    if (this.dataContext.ValidateLoginPass(chatClient.Credentials.Login, chatClient.Credentials.Pasword))
                                     {
-                                        if (this.IsLogged(login))
+                                        if (this.IsLogged(chatClient.Credentials.Login))
                                         {
-                                            var oldUserParams = this.clients[login];
+                                            var oldUserParams = this.clients[chatClient.Credentials.Login];
                                             int oldresp = -2;
                                             if (oldUserParams.Tcp.Connected)
                                             {
@@ -201,28 +199,28 @@
                                                 FreeTCPClient(tcp);
                                                 Log.DebugFormat(
                                                         "Logon from IP '{0}' failed: User '{1}' already logged on", 
-                                                        clientIPAddress, 
-                                                        login);
+                                                        clientIPAddress,
+                                                        chatClient.Credentials.Login);
                                             }
                                             else
                                             {
                                                 // old client with login <login> dead -> dispose of him and connect new
                                                 FreeTCPClient(oldUserParams.Tcp);
-                                                this.RemoveClient(login);
-                                                this.ProcessAndAcceptNewClient(tcp, login, chatClient.Cryptor);
+                                                this.RemoveClient(chatClient.Credentials.Login);
+                                                this.ProcessAndAcceptNewClient(tcp, chatClient.Credentials.Login, chatClient.Cryptor);
                                                 Log.DebugFormat(
                                                         "Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)", 
-                                                        clientIPAddress, 
-                                                        login);
+                                                        clientIPAddress,
+                                                        chatClient.Credentials.Login);
                                             }
                                         }
                                         else
                                         {
-                                            this.ProcessAndAcceptNewClient(tcp, login, chatClient.Cryptor);
+                                            this.ProcessAndAcceptNewClient(tcp, chatClient.Credentials.Login, chatClient.Cryptor);
                                             Log.DebugFormat(
                                                     "Logon from IP '{0}' success: User '{1}' from IP  logged on", 
-                                                    clientIPAddress, 
-                                                    login);
+                                                    clientIPAddress,
+                                                    chatClient.Credentials.Login);
                                         }
                                     }
                                     else
@@ -231,26 +229,25 @@
                                         FreeTCPClient(tcp);
                                         Log.DebugFormat(
                                                 "Logon from IP '{0}' failed: Login '{1}'//Password not recognized", 
-                                                clientIPAddress, 
-                                                login);
+                                                clientIPAddress,
+                                                chatClient.Credentials.Login);
                                     }
 
                                     break;
                                 case 1:
 
                                     // Registration without logon
-                                    bytes = ReadWrappedEncMsg(clientStream, chatClient.Cryptor);
-                                    ParseLogonMsg(bytes, out login, out pass);
-                                    if (!this.dataContext.LoginExists(login))
+                                    chatClient.ReadCredentials();
+                                    if (!this.dataContext.LoginExists(chatClient.Credentials.Login))
                                     {
-                                        this.dataContext.AddUser(login, pass);
+                                        this.dataContext.AddUser(chatClient.Credentials.Login, chatClient.Credentials.Pasword);
                                         clientStream.WriteByte(0);
-                                        Log.DebugFormat("Registration success: User '{0}' registered", login);
+                                        Log.DebugFormat("Registration success: User '{0}' registered", chatClient.Credentials.Login);
                                     }
                                     else
                                     {
                                         clientStream.WriteByte(1);
-                                        Log.DebugFormat("Registration failed: User '{0}' already registered", login);
+                                        Log.DebugFormat("Registration failed: User '{0}' already registered", chatClient.Credentials.Login);
                                     }
 
                                     FreeTCPClient(tcp);
@@ -728,20 +725,6 @@
         #endregion
 
         #region Parsing
-
-        private static void ParseLogonMsg(byte[] bytes, out string login, out string pass)
-        {
-            // Read header = type+loginSize+passSize (9 bytes)
-            int hsz = 9;
-
-            // bytes[0] must be 0
-            int loginSize = BitConverter.ToInt32(bytes, 1);
-            int passSize = BitConverter.ToInt32(bytes, 5);
-
-            // Read data
-            login = System.Text.Encoding.UTF8.GetString(bytes, hsz, loginSize);
-            pass = System.Text.Encoding.UTF8.GetString(bytes, hsz + loginSize, passSize);
-        }
 
         private static void ParseChatMsg(byte[] bytes, out string source, out string dest, out string message)
         {

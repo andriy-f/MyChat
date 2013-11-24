@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Net.Sockets;
     using System.Runtime.CompilerServices;
 
@@ -21,9 +22,13 @@
         /// </summary>
         private readonly List<string> rooms = new List<string>(3);
 
+        private NetworkStream tcpStream;
+
         public ChatClient(TcpClient client)
         {
             this.Tcp = client;
+            this.tcpStream = client.GetStream();
+            this.tcpStream.ReadTimeout = 1000; // TODO: remove this from server
         }
 
         public enum Status
@@ -46,8 +51,10 @@
         
         public AESCSPImpl Cryptor { get; set; }
 
+        internal Credentials Credentials { get; private set; }
+
         public string Login { get; set; }
-        
+
         /// <summary>
         /// TODO: use this
         /// </summary>
@@ -213,9 +220,8 @@
             try
             {
                 var ecdh1 = new ECDHWrapper(AgreementLength);
-                var stream = this.Tcp.GetStream();
                 var recCliPub = this.ReadWrappedMsg();
-                WriteWrappedMsg(stream, ecdh1.PubData);
+                this.WriteWrappedMsg(ecdh1.PubData);
                 var agr = ecdh1.calcAgreement(recCliPub);
 
                 const int AESKeyLength = 32;
@@ -251,19 +257,40 @@
 
         public byte[] ReadWrappedEncMsg()
         {
-            var stream = this.Tcp.GetStream();
+            var stream = this.tcpStream;
             int streamDataSize = ReadInt32(stream);
             var streamData = new byte[streamDataSize];
             stream.Read(streamData, 0, streamDataSize);
             return this.Cryptor.Decrypt(streamData);
         }
 
-        public static void WriteWrappedMsg(System.IO.Stream stream, byte[] bytes)
+        public void WriteWrappedMsg(byte[] bytes)
         {
             var data = new byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
-            stream.Write(data, 0, data.Length);
+            this.tcpStream.Write(data, 0, data.Length);
+        }
+
+        public byte ReadByte()
+        {
+            var res = this.Tcp.GetStream().ReadByte();
+            if (res >= 0)
+            {
+                return (byte)res;
+            }
+            else
+            {
+                // res == -1 --> end of stream
+                throw new EndOfStreamException();
+            }
+        }
+
+        public void ReadCredentials()
+        {
+            var bytes = this.ReadWrappedEncMsg();
+            var creds = Credentials.Parse(bytes, 1);
+            this.Credentials = creds;
         }
     }
 }
