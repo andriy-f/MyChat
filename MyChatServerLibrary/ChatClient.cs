@@ -22,22 +22,26 @@
         /// </summary>
         private readonly List<string> rooms = new List<string>(3);
 
-        private NetworkStream tcpStream;
+        private readonly NetworkStream tcpStream;
 
         public ChatClient(TcpClient client)
         {
             this.Tcp = client;
             this.tcpStream = client.GetStream();
             this.tcpStream.ReadTimeout = 1000; // TODO: remove this from server
+            this.CurrentStatus = Status.Uninitialized;
         }
 
         public enum Status
         {
             Uninitialized,
-            Validated,
+            Verified,
             Encrypted,
-            LoggedOn
+            LoggedOn,
+            Freed
         }
+
+        public Status CurrentStatus { get; private set; }
         
         public List<string> Rooms
         {
@@ -51,9 +55,9 @@
         
         public AESCSPImpl Cryptor { get; set; }
 
-        internal Credentials Credentials { get; private set; }
-
         public string Login { get; set; }
+
+        internal Credentials Credentials { get; private set; }
 
         /// <summary>
         /// TODO: use this
@@ -182,7 +186,7 @@
         {
             try
             {
-                var stream = this.Tcp.GetStream();
+                var stream = this.tcpStream;
                 
                 // Check if client is legit
                 var send = MyRandoms.GenerateSecureRandomBytes(100);
@@ -197,6 +201,7 @@
                     rec = ChatServer.ReadWrappedMsg(stream);
                     send = Crypto.Utils.ServerSigner.signHash(rec);
                     ChatServer.WriteWrappedMsg(stream, send);
+                    this.CurrentStatus = Status.Verified;
                     return 0;
                 }
                 else
