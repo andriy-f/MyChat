@@ -82,12 +82,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChatServerDataSet.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
-    </Compile>
-    <Compile Include="DAL\MssqlDataContext.cs" />
+    <Compile Include="CustomSettings.cs" />
     <Compile Include="LogForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -119,17 +114,6 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="app.config" />
-    <None Include="ChatServerDataSet.xsc">
-      <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
-    </None>
-    <None Include="ChatServerDataSet.xsd">
-      <SubType>Designer</SubType>
-      <Generator>MSDataSetGenerator</Generator>
-      <LastGenOutput>ChatServerDataSet.Designer.cs</LastGenOutput>
-    </None>
-    <None Include="ChatServerDataSet.xss">
-      <DependentUpon>ChatServerDataSet.xsd</DependentUpon>
-    </None>
     <None Include="log4net.config">
       <SubType>Designer</SubType>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -42,12 +42,10 @@
 
         private void BUpdateClick(object sender, EventArgs e)
         {
-            Program.LoginsTableAdapterdef.Update(this.chatServerDataSet);            
         }
 
         private void BRefreshClick(object sender, EventArgs e)
         {
-            Program.LoginsTableAdapterdef.Fill(this.chatServerDataSet.Logins);
         }     
 
         private void BApplyClick(object sender, EventArgs e)
@@ -63,9 +61,6 @@
                 builder["User ID"] = this.tbUser.Text;
                 builder["Password"] = this.tbPass.Text;
 
-                Program.LoginsTableAdapterdef.Connection.ConnectionString = builder.ConnectionString;
-
-                Program.SaveConStr(builder.ConnectionString);
                 ////Properties.Settings.Default.String1 = Crypto.Crypto1.encStrDef(builder.ConnectionString);
                 Properties.Settings.Default.Save();
             }

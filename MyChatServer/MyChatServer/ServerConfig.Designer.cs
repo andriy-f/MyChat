@@ -32,8 +32,6 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ServerConfig));
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.loginsBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.chatServerDataSet = new Andriy.MyChat.Server.ChatServerDataSet();
-            this.loginsTableAdapter = new Andriy.MyChat.Server.ChatServerDataSetTableAdapters.LoginsTableAdapter();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tpGeneral = new System.Windows.Forms.TabPage();
             this.nudPort = new System.Windows.Forms.NumericUpDown();
@@ -62,7 +60,6 @@
             this.tsmiLog = new System.Windows.Forms.ToolStripMenuItem();
             this.tsmiExit = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.loginsBindingSource)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.chatServerDataSet)).BeginInit();
             this.tabControl1.SuspendLayout();
             this.tpGeneral.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nudPort)).BeginInit();
@@ -83,16 +80,6 @@
             // loginsBindingSource
             // 
             this.loginsBindingSource.DataMember = "Logins";
-            this.loginsBindingSource.DataSource = this.chatServerDataSet;
-            // 
-            // chatServerDataSet
-            // 
-            this.chatServerDataSet.DataSetName = "ChatServerDataSet";
-            this.chatServerDataSet.SchemaSerializationMode = System.Data.SchemaSerializationMode.IncludeSchema;
-            // 
-            // loginsTableAdapter
-            // 
-            this.loginsTableAdapter.ClearBeforeFill = true;
             // 
             // tabControl1
             // 
@@ -385,7 +372,6 @@
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ServerConfigFormClosing);
             this.Load += new System.EventHandler(this.ServerConfigLoad);
             ((System.ComponentModel.ISupportInitialize)(this.loginsBindingSource)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.chatServerDataSet)).EndInit();
             this.tabControl1.ResumeLayout(false);
             this.tpGeneral.ResumeLayout(false);
             this.tpGeneral.PerformLayout();
@@ -402,9 +388,9 @@
         #endregion
 
         private System.Windows.Forms.NotifyIcon notifyIcon1;
-        private ChatServerDataSet chatServerDataSet;
+
         private System.Windows.Forms.BindingSource loginsBindingSource;
-        private Andriy.MyChat.Server.ChatServerDataSetTableAdapters.LoginsTableAdapter loginsTableAdapter;
+
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tpGeneral;
         private System.Windows.Forms.NumericUpDown nudPort;
