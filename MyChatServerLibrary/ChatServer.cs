@@ -17,9 +17,6 @@
     {
         #region Fields
 
-        private const int AgreementLength = 32;
-
-        ////public static System.Collections.Hashtable loginBase = new System.Collections.Hashtable(3);//login/pass
         private static readonly ILog Log = LogManager.GetLogger(typeof(ChatServer));
 
         internal static readonly byte[] CryptoIv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
@@ -37,10 +34,28 @@
         private IDataContext dataContext;
 
         private bool continueToListen = true;
-        
-        //// static ECDSAWrapper seanceDsaClientChecker;//checks client's messages
-        
-        //// static ECDSAWrapper seanceDsaServerSigner;//signs servers messages
+
+        public ChatServer(DataContext newDataContext, int port)
+        {
+            this.dataContext = newDataContext;
+
+            this.Port = port;
+
+            this.clients.Clear();
+
+            // Listener thread
+            if (this.listenerThread != null)
+            {
+                this.listenerThread.Abort();
+            }
+
+            this.listenerThread = new Thread(this.Listen)
+            {
+                Priority = ThreadPriority.Lowest
+            };
+            this.listenerThread.Start();
+            Log.Info("Listening started");
+        }
         
         public int Port { get; private set; }
 
@@ -61,28 +76,6 @@
             }
         }
 
-        public void Init(DataContext newDataContext, int port)
-        {
-            this.dataContext = newDataContext;
-
-            this.Port = port;
-            
-            this.clients.Clear();
-
-            // Listener thread
-            if (this.listenerThread != null)
-            {
-                this.listenerThread.Abort();
-            }
-
-            this.listenerThread = new Thread(this.Listen)
-                             {
-                                 Priority = ThreadPriority.Lowest
-                             };
-            this.listenerThread.Start();
-            Log.Info("Listening started");
-        }
-
         public void Finish()
         {
             if (this.listenerThread != null)
@@ -96,7 +89,7 @@
 
         #region Listen
 
-        public void Listen()
+        private void Listen()
         {
             TcpListener tcpListener = null;
             try
@@ -164,8 +157,6 @@
                         if (chatClient.SetUpSecureChannel() == 0)
                         {
                             var type = chatClient.ReadByte();
-                            string login, pass;
-                            byte[] bytes;
                             switch (type)
                             {
                                 case 0:
