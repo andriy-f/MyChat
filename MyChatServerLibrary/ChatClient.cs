@@ -3,35 +3,42 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Net.Sockets;
-    using System.Runtime.CompilerServices;
 
     using Andriy.Security.Cryptography;
 
     /// <summary>
     /// client == null -> client incative
+    /// 
+    /// TODO:
+    /// 1. implement IDIsposeable to free TcpClient and it's stream
     /// </summary>
     public class ChatClient
     {
         private const int AgreementLength = 32;
 
+        private readonly IServer server;
+
+        private readonly NetworkStream tcpStream;
+        
         private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatClient));
 
         /// <summary>
-        /// Must be list of unique
+        /// Must be list of unique. TODO: convert type to roomParams
         /// </summary>
-        private readonly List<string> rooms = new List<string>(3);
+        private List<string> rooms = new List<string>(3);
 
-        private readonly NetworkStream tcpStream;
-
-        public ChatClient(TcpClient client)
+        public ChatClient(IServer server, TcpClient client)
         {
+            this.server = server;
             this.Tcp = client;
             this.tcpStream = client.GetStream();
             this.tcpStream.ReadTimeout = 1000; // TODO: remove this from server
             this.CurrentStatus = Status.Uninitialized;
         }
 
+        // TODO: use
         public enum Status
         {
             Uninitialized,
@@ -59,124 +66,179 @@
 
         internal Credentials Credentials { get; private set; }
 
-        /// <summary>
-        /// TODO: use this
-        /// </summary>
-        ////public void ProcessCurrentConnection()
-        ////{
-        ////    byte[] bytes;
-        ////    System.Net.IPAddress ipAddress = Utils.TCPClient2IPAddress(client);
-        ////    Program.LogEvent(string.Format("Connected from {0}", ipAddress));
-        ////    NetworkStream stream = AtcpClient.GetStream();
-        ////    stream.ReadTimeout = 1000;
-        ////    try
-        ////    {
-        ////        int authatt = processAuth(stream);
-        ////        if (authatt == 0)
-        ////        {
-        ////            AESCSPImpl cryptor;
-        ////            if (processAgreement(stream, out cryptor) == 0)
-        ////            {
-        ////                Byte type = (byte)stream.ReadByte();
-        ////                string login, pass;
-        ////                switch (type)
-        ////                {
-        ////                    case 0:
-        ////                        //Logon attempt
-        ////                        bytes = readWrappedEncMsg(stream, cryptor);
-        ////                        parseLogonMsg(bytes, out login, out pass);
-        ////                        if (dataGetter.ValidateLoginPass(login, pass))
-        ////                            if (isLogged(login))
-        ////                            {
-        ////                                ChatClient oldUP = (ChatClient)clientBase[login];
-        ////                                int oldresp = -2;
-        ////                                if (oldUP.client.Connected)
-        ////                                {
-        ////                                    NetworkStream oldStream = oldUP.client.GetStream();
+        public void ProcessCurrentConnection()
+        {
+            if (this.Tcp == null || !this.Tcp.Connected)
+            {
+                // TODO: dispose myself, remove from Server
+                return;
+            }
 
-        ////                                    try
-        ////                                    {
-        ////                                        oldStream.WriteByte(10);
-        ////                                        oldresp = oldStream.ReadByte();
-        ////                                    }
-        ////                                    catch (System.IO.IOException)
-        ////                                    {
-        ////                                        //Timeout - old client probably dead
-        ////                                    }
-        ////                                }
+            string clientLogin = this.Login;
+            if (!this.DataInStream())
+            {
+                // Just skip
+                return;
+            }
 
-        ////                                if (oldresp == 10)
-        ////                                {
-        ////                                    //Client with login <login> still alive -> new login attempt invalid
-        ////                                    stream.WriteByte(1);
-        ////                                    freeTCPClient(client);
-        ////                                    Program.LogEvent(string.Format("Logon from IP '{0}' failed: User '{1}' already logged on", ipAddress, login));
-        ////                                }
-        ////                                else
-        ////                                {
-        ////                                    //old client with login <login> dead -> dispose of him and connect new
-        ////                                    freeTCPClient(oldUP.client);
-        ////                                    removeClient(login);
-        ////                                    processAndAcceptNewClient(client, login, cryptor);
-        ////                                    Program.LogEvent(string.Format("Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)", ipAddress, login));
-        ////                                }
-        ////                            }
-        ////                            else
-        ////                            {
-        ////                                processAndAcceptNewClient(client, login, cryptor);
-        ////                                Program.LogEvent(string.Format("Logon from IP '{0}' success: User '{1}' from IP  logged on", ipAddress, login));
-        ////                            }
-        ////                        else
-        ////                        {
-        ////                            stream.WriteByte(2);
-        ////                            freeTCPClient(client);
-        ////                            Program.LogEvent(string.Format("Logon from IP '{0}' failed: Login '{1}'//Password not recognized", ipAddress, login));
-        ////                        }
-        ////                        break;
-        ////                    case 1:
-        ////                        //Registration without logon
-        ////                        bytes = readWrappedEncMsg(stream, cryptor);
-        ////                        parseLogonMsg(bytes, out login, out pass);
-        ////                        if (!dataGetter.ValidateLogin(login))
-        ////                        {
-        ////                            dataGetter.AddNewLoginPass(login, pass);
-        ////                            stream.WriteByte(0);
-        ////                            Program.LogEvent(string.Format("Registration success: User '{0}' registered", login));
-        ////                        }
-        ////                        else
-        ////                        {
-        ////                            stream.WriteByte(1);
-        ////                            Program.LogEvent(string.Format("Registration failed: User '{0}' already registered", login));
-        ////                        }
-        ////                        freeTCPClient(client);
-        ////                        break;
-        ////                    default:
-        ////                        //Wrong data received
-        ////                        throw new Exception();
-        ////                }
-        ////            }
-        ////        }
-        ////        else if (authatt == 1)
-        ////        {
-        ////            freeTCPClient(client);
-        ////            Program.LogEvent(string.Format("Auth from IP '{0}' fail because client is not legit", ipAddress));
-        ////            //Ban IP...
-        ////        }
-        ////        else
-        ////        {
-        ////            freeTCPClient(client);
-        ////            Program.LogEvent(string.Format("Auth from IP '{0}' fail because error. See previous message for details", ipAddress));
-        ////        }
-        ////    }
-        ////    catch (Exception ex)
-        ////    {
-        ////        Program.LogException(new Exception(String.Format("New connetion from IP {0} failed",
-        ////            ipAddress), ex));
-        ////        freeTCPClient(client);
-        ////        //Ban IP ipAddress...
-        ////    }
-        ////}
-        
+            try
+            {
+                // Parsing data from client
+                byte[] data;
+                int type = this.ReadByte(); // TODO: resolve blocking
+                string source, dest, messg;
+                switch (type)
+                {
+                    case 3: // Message to room
+                        data = this.ReadWrappedEncMsg();
+                        ParseChatMsg(data, out source, out dest, out messg); // dest - room
+                        Log.DebugFormat("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
+
+                        // if user(source) in room(dest)
+                        var senderClient = this;
+                        if (senderClient.Rooms.Contains(dest))
+                        {
+                            var roomParams = this.server.GetRoom(dest);
+                            foreach (string roomUsr in roomParams.Users)
+                            {
+                                var destinationClient1 = this.server.GetChatClient(roomUsr);
+                                try
+                                {
+                                    destinationClient1.SendByte(3);
+                                    destinationClient1.WriteWrappedEncMsg(data);
+                                }
+                                catch (IOException)
+                                {
+                                    this.server.StageClientForRemoval(destinationClient1);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // client not in the room he marked as dest
+                            this.SendByte(1);
+                        }
+
+                        break;
+                    case 4: // Message to user
+                        data = this.ReadWrappedEncMsg();
+                        ParseChatMsg(data, out source, out dest, out messg); // dest - user
+                        Log.DebugFormat("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
+                        var destinationClient = this.server.GetChatClient(dest);
+                        if (destinationClient != null)
+                        {
+                            try
+                            {
+                                destinationClient.SendByte(4);
+                                destinationClient.WriteWrappedEncMsg(data);
+                            }
+                            catch (IOException)
+                            {
+                                this.server.StageClientForRemoval(destinationClient);
+                            }
+                        }
+                        else
+                        {
+                            // no Success - No Such Dest
+                            this.SendByte(1);
+                        }
+
+                        break;
+                    case 5: // Message to All
+                        data = this.ReadWrappedEncMsg();
+
+                        // Display to all
+                        ParseChatMsg(data, out source, out dest, out messg);
+                        Log.DebugFormat("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
+                        foreach (var destinationClient1 in this.server.GetChatClients())
+                        {
+                            try
+                            {
+                                destinationClient1.SendByte(5);
+                                destinationClient1.WriteWrappedEncMsg(data);
+                            }
+                            catch (IOException)
+                            {
+                                this.server.StageClientForRemoval(destinationClient1);
+                            }
+                        }
+
+                        break;
+                    case 6: // Join Room
+                        string room, pass;
+                        data = this.ReadWrappedEncMsg();
+                        ParseJoinRoomMsg(data, out room, out pass);
+                        if (this.server.RoomExist(room))
+                        {
+                            if (this.server.ConfirmRoomPass(room, pass))
+                            {
+                                // Allow join 
+                                this.server.AddUserToRoom(room, clientLogin);
+                                this.SendByte(0); // Success
+                                Log.DebugFormat("User '{0}' joined room '{1}' with pass '{2}'", clientLogin, room, pass);
+                            }
+                            else
+                            {
+                                this.SendByte(1); // Room Exist, invalid pass
+                                Log.DebugFormat(
+                                    "User '{0}' failed to join room '{1}' because invalid pass '{2}'",
+                                    clientLogin,
+                                    room,
+                                    pass);
+                            }
+                        }
+                        else
+                        {
+                            // Room doesn't exist
+                            this.server.TryCreateRoom(room, pass);
+                            this.server.AddUserToRoom(room, clientLogin);
+                            this.SendByte(0); // Success
+                            Log.DebugFormat("User '{0}' joined new room '{1}' with pass '{2}'", clientLogin, room, pass);
+                        }
+
+                        break;
+                    case 7: // Logout //user - de.Key, room.users - de.Key, if room empty -> delete
+                        this.SendByte(0); // Approve
+                        this.server.StageClientForRemoval(this); // Free Resources
+                        Log.DebugFormat("Client '{0}' performed Logout", clientLogin);
+                        break;
+                    case 8: // Get Rooms                                        
+                        data = FormatGetRoomsMsgReply(this.server.GetRoomsNames().ToArray());
+                        this.SendByte(8);
+                        this.WriteWrappedMsg(data);
+                        Log.DebugFormat("Client '{0}' requested rooms", clientLogin);
+                        break;
+                    case 9: // Leave room
+                        data = this.ReadWrappedMsg();
+                        string leaveroom = ParseLeaveRoomMsg(data);
+                        this.server.RemoveClientFromRoom(clientLogin, leaveroom);
+                        this.SendByte(0); // Approve
+                        Log.DebugFormat("Client '{0}' leaved room '{1}'", clientLogin, leaveroom);
+                        break;
+                    case 11: // Get Room users
+                        string roomname = System.Text.Encoding.UTF8.GetString(this.ReadWrappedMsg());
+                        data = this.server.FormatRoomUsers(roomname);
+                        this.SendByte(11);
+                        this.WriteWrappedMsg(data);
+                        Log.DebugFormat("Client '{0}' requested room users", clientLogin);
+                        break;
+                    default: // Invalid message from client
+                        throw new Exception("Client send unknown token");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Invalid data from current client
+                Log.DebugFormat(
+                    "Received invalid data from client with login '{1}', IP '{2}'-> kick.{0}Reason:{0}{3}",
+                    Environment.NewLine,
+                    clientLogin,
+                    Utils.TCPClient2IPAddress(this.Tcp),
+                    ex);
+                this.server.StageClientForRemoval(this); // CLient send invalid data, so we'll "drop" him
+            }
+        }
+
         /// <summary>
         /// Sets up secure channel (this.Cryptor)
         /// </summary>
@@ -212,7 +274,7 @@
             return BitConverter.ToInt32(data, 0);
         }
 
-        public byte[] ReadWrappedMsg()
+        private byte[] ReadWrappedMsg()
         {
             var stream = this.Tcp.GetStream();
             int streamDataSize = ReadInt32(stream);
@@ -221,7 +283,7 @@
             return streamData;
         }
 
-        public byte[] ReadWrappedEncMsg()
+        private byte[] ReadWrappedEncMsg()
         {
             var stream = this.tcpStream;
             int streamDataSize = ReadInt32(stream);
@@ -230,8 +292,17 @@
             return this.Cryptor.Decrypt(streamData);
         }
 
-        public void WriteWrappedMsg(byte[] bytes)
+        private void WriteWrappedMsg(byte[] bytes)
         {
+            var data = new byte[4 + bytes.Length];
+            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
+            bytes.CopyTo(data, 4);
+            this.tcpStream.Write(data, 0, data.Length);
+        }
+
+        private void WriteWrappedEncMsg(byte[] plain)
+        {
+            var bytes = this.Cryptor.Encrypt(plain);
             var data = new byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
@@ -252,6 +323,11 @@
             }
         }
 
+        private void SendByte(byte value)
+        {
+            this.Tcp.GetStream().WriteByte(value);
+        }
+
         public void ReadCredentials()
         {
             var bytes = this.ReadWrappedEncMsg();
@@ -266,7 +342,7 @@
                 if (this.Tcp.Connected)
                 {
                     this.Tcp.GetStream().Close();
-                    ////this.tcpStream = null; // TODO
+                    ////this.tcpStream. = null; // TODO
                 }
 
                 this.Tcp.Close();
@@ -275,7 +351,7 @@
             this.CurrentStatus = Status.Freed;
         }
 
-        public bool IsAlive()
+        public bool PokeForAlive()
         {
             if (!this.Tcp.Connected)
             {
@@ -291,7 +367,7 @@
                 }
                 else
                 {
-                    // Received something, but client inadequate
+                    // Received unexpected data
                     return false;
                 }
             }
@@ -339,6 +415,75 @@
                 Log.DebugFormat("Error while authentificating: {0}{1}", Environment.NewLine, ex);
                 return 1;
             }
+        }
+
+        private static void ParseChatMsg(byte[] bytes, out string source, out string dest, out string message)
+        {
+            // bytes[0] must be 3 or 4 or 5
+            // header Size =13
+            // Reading header
+            int sourceBSize = BitConverter.ToInt32(bytes, 1);
+            int destBSize = BitConverter.ToInt32(bytes, 5);
+            int messageBSize = BitConverter.ToInt32(bytes, 9);
+
+            // Reading data                      
+            source = System.Text.Encoding.UTF8.GetString(bytes, 13, sourceBSize);
+            dest = System.Text.Encoding.UTF8.GetString(bytes, 13 + sourceBSize, destBSize);
+            message = System.Text.Encoding.UTF8.GetString(bytes, 13 + sourceBSize + destBSize, messageBSize);
+        }
+
+        private static void ParseJoinRoomMsg(byte[] bytes, out string room, out string pass)
+        {
+            // bytes[0] must be 6
+            // header Size = 9
+            // Reading header
+            int roomBlen = BitConverter.ToInt32(bytes, 1);
+            int passBlen = BitConverter.ToInt32(bytes, 5);
+
+            // Reading data                      
+            room = System.Text.Encoding.UTF8.GetString(bytes, 9, roomBlen);
+            pass = System.Text.Encoding.UTF8.GetString(bytes, 9 + roomBlen, passBlen);
+        }
+
+        private static string ParseLeaveRoomMsg(byte[] bytes)
+        {
+            int roomBsize = BitConverter.ToInt32(bytes, 0); // reads first 4 bytes - header
+            return System.Text.Encoding.UTF8.GetString(bytes, 4, roomBsize);
+        }
+
+        private static byte[] FormatGetRoomsMsgReply(string[] rooms)
+        {
+            int i, n = rooms.Length;
+            var roomB = new byte[n][];
+            int msgLen = 1 + 4; // type+roomCount
+            for (i = 0; i < n; i++)
+            {
+                string s = rooms[i];
+                roomB[i] = System.Text.Encoding.UTF8.GetBytes(s);
+                msgLen += 4 + roomB[i].Length;
+            }
+
+            // Formatting Message
+            var data = new byte[msgLen];
+            data[0] = 0; // type
+            byte[] roomCntB = BitConverter.GetBytes(n);
+            roomCntB.CopyTo(data, 1);
+            int pos = 5;
+            for (i = 0; i < n; i++)
+            {
+                var roomBiSize = BitConverter.GetBytes(roomB[i].Length); // 4 bytes
+                roomBiSize.CopyTo(data, pos);
+                pos += 4;
+                roomB[i].CopyTo(data, pos);
+                pos += roomB[i].Length;
+            }
+
+            return data;
+        }
+
+        private bool DataInStream()
+        {
+            return this.tcpStream.DataAvailable;
         }
     }
 }

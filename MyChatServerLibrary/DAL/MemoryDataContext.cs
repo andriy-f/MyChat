@@ -11,6 +11,7 @@
             Logins.TryAdd("admin", "qwe`123");
             Logins.TryAdd("user1", "qwe`123");
             Logins.TryAdd("user2", "qwe`123");
+            Logins.TryAdd("user3", "qwe`123");
         }
 
         public override bool ValidateLoginPass(string login, string password)
