@@ -75,7 +75,7 @@
             }
 
             string clientLogin = this.Login;
-            if (!this.DataInStream())
+            if (!this.DataAvailable())
             {
                 // Just skip
                 return;
@@ -481,9 +481,20 @@
             return data;
         }
 
-        private bool DataInStream()
+        private bool DataAvailable()
         {
-            return this.tcpStream.DataAvailable;
+            if (this.Tcp == null || !this.Tcp.Connected)
+            {
+                return false;
+            }
+
+            var stream = this.Tcp.GetStream();
+            if (stream == null)
+            {
+                return false;
+            }
+
+            return stream.DataAvailable;
         }
     }
 }
