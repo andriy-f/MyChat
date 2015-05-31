@@ -3,7 +3,7 @@
     using System;
     using System.Security.Cryptography;
 
-    internal class MyRandoms
+    public class MyRandoms
     {
         ////private readonly Random simpleRandom = new Random();
         

@@ -13,7 +13,7 @@
     using Org.BouncyCastle.Security;
     using Org.BouncyCastle.Utilities.Encoders;
 
-    class ECDSAWrapper
+    public class ECDSAWrapper
     {
         #region Fields
 

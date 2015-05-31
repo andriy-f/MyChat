@@ -170,6 +170,10 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\MyChat.Common\MyChat.Common.csproj">
+      <Project>{b17c9414-5bcd-4b62-a1a6-cb30ab849585}</Project>
+      <Name>MyChat.Common</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\MyChatServerLibrary\MyChat.Server.Core.csproj">
       <Project>{937810c7-d05c-48b3-99b6-0d04957ea422}</Project>
       <Name>MyChat.Server.Core</Name>
