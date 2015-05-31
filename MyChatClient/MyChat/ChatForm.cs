@@ -23,10 +23,18 @@ namespace Andriy.MyChat.Client
             this.refreshDestination();
         }
 
-        public void OnReceiveMsg(string source, string dest, string msg)
+        private void OnReceiveMsg(string source, string dest, string msg)
         {
-            this.rtbHistory.AppendText(String.Format("[{0}]->[{1}]: \"{2}\"\n", source, dest, msg));
-            this.rtbHistory.ScrollToCaret();
+            if (this.rtbHistory.InvokeRequired)
+            {
+                var callback = new Action<string, string, string>(this.OnReceiveMsg);
+                this.Invoke(callback, new object[] { source, dest, msg });
+            }
+            else
+            {
+                this.rtbHistory.AppendText(String.Format("[{0}]->[{1}]: \"{2}\"\n", source, dest, msg));
+                this.rtbHistory.ScrollToCaret();
+            }
         }
 
         private void bSend_Click(object sender, EventArgs e)
