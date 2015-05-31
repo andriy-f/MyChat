@@ -47,9 +47,6 @@
   <ItemGroup>
     <Compile Include="App_Packages\LibLog.4.2\LibLog.cs" />
     <Compile Include="ChatClient.cs" />
-    <Compile Include="Crypto\AESCSPImpl.cs" />
-    <Compile Include="Crypto\ECDHWrapper.cs" />
-    <Compile Include="Crypto\ECDSAWrapper.cs" />
     <Compile Include="Exceptions.cs" />
     <Compile Include="HexRep.cs" />
     <Compile Include="ListenProcessor.cs" />
@@ -58,6 +55,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MyChat.Common\MyChat.Common.csproj">
+      <Project>{b17c9414-5bcd-4b62-a1a6-cb30ab849585}</Project>
+      <Name>MyChat.Common</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

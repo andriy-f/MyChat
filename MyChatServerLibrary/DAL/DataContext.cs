@@ -10,7 +10,7 @@
         {
         }
 
-        public static DataContext Instance
+        public static IDataContext Instance
         {
             get
             {
@@ -26,7 +26,7 @@
 
         private class Nested
         {
-            internal static readonly DataContext DataInstance = new MemoryDataContext();
+            internal static readonly IDataContext DataInstance = new MemoryDataContext();
             
             // Explicit static constructor to tell C# compiler
             // not to mark type as beforefieldinit

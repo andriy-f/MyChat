@@ -38,7 +38,7 @@
 
         private bool continueToListen = true;
 
-        public ChatServer(DataContext newDataContext, int port)
+        public ChatServer(IDataContext newDataContext, int port)
         {
             this.dataContext = newDataContext;
 

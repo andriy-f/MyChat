@@ -30,9 +30,12 @@ namespace Andriy.MyChat.Client
     using System.Collections.Generic;
     using System.Net.Sockets;
 
-    using Andriy.MyChat.Client.Crypto;
+    using Andriy.Security.Cryptography;
 
     using global::MyChat.Client.Core.Logging;
+
+    using ECDHWrapper = Andriy.Security.Cryptography.ECDHWrapper;
+    using ECDSAWrapper = Andriy.Security.Cryptography.ECDSAWrapper;
 
     public static class ChatClient
     {
@@ -656,7 +659,7 @@ namespace Andriy.MyChat.Client
             int streamDataSize = readInt32(stream);
             Byte[] streamData = new Byte[streamDataSize];
             stream.Read(streamData, 0, streamDataSize);
-            return cryptor.decrypt(streamData);            
+            return cryptor.Decrypt(streamData);            
         }
 
         static void writeWrappedMsg(NetworkStream stream, Byte[] bytes)
@@ -669,7 +672,7 @@ namespace Andriy.MyChat.Client
 
         static void writeWrappedEncMsg(NetworkStream stream, Byte[] plain)
         {
-            byte[] bytes = cryptor.encrypt(plain);
+            byte[] bytes = cryptor.Encrypt(plain);
             Byte[] data = new Byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
