@@ -1,10 +1,8 @@
 ﻿namespace Andriy.MyChat.Server
 {
     using System;
-    using System.Collections;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Net;
     using System.Net.Sockets;
     using System.Threading;
@@ -12,13 +10,13 @@
     using Andriy.MyChat.Server.DAL;
     using Andriy.Security.Cryptography;
 
-    using log4net;
+    using global::MyChat.Common.Logging;
 
     public class ChatServer : IServer
     {
         #region Fields
 
-        private static readonly ILog Log = LogManager.GetLogger(typeof(ChatServer));
+        private static readonly ILog Log = LogProvider.GetLogger(typeof(ChatServer));
 
         internal static readonly byte[] CryptoIv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
@@ -122,7 +120,7 @@
             }
             catch (Exception e)
             {
-                Log.Error(e);
+                Log.Error(e.ToString);
             }
             finally
             {
@@ -240,7 +238,7 @@
             }
             catch (Exception ex)
             {
-                Log.Error(new Exception(string.Format("New connetion from IP {0} failed", clientIPAddress), ex));
+                Log.Error(new Exception(string.Format("New connetion from IP {0} failed", clientIPAddress), ex).ToString);
                 FreeTCPClient(tcp);
 
                 // Ban IP ipAddress...
