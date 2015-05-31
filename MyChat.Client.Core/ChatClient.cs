@@ -37,27 +37,33 @@ namespace Andriy.MyChat.Client
     using ECDHWrapper = Andriy.Security.Cryptography.ECDHWrapper;
     using ECDSAWrapper = Andriy.Security.Cryptography.ECDSAWrapper;
 
-    public static class ChatClient
+    public class ChatClient
     {
         #region Fields
 
+        const int agrlen = 32;
+
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(ChatClient));
 
-        static int portNum = 13000;
-        static string server = "localhost";
-        static string login = "";
-        static string password = "";
-        const int agrlen=32;
+        int portNum = 13000;
 
-        static TcpClient client = null;
-        static NetworkStream stream = null;
+        string server = "localhost";
 
-        public static MsgProcessor msgProcessor = new MsgProcessor();
+        string login = "";
+
+        string password = "";
+        
+        private TcpClient client;
+        private NetworkStream stream;
+
+        public MsgProcessor msgProcessor = new MsgProcessor();
+
         internal static Queue<ListenProcessor> listenQueue = new Queue<ListenProcessor>();
+
         internal static Queue<Action> sendQueue = new Queue<Action>();
 
-        private static System.Threading.Thread listenerThread = null;
-        private static System.Threading.Mutex mut = new System.Threading.Mutex();
+        private System.Threading.Thread listenerThread;
+        private System.Threading.Mutex mut = new System.Threading.Mutex();
 
         public static readonly byte[] staticServerPubKey = { 4, 81, 97, 253, 33, 148, 211, 27, 164, 103, 98, 244, 190, 246, 165, 216, 112, 148, 56, 28, 38, 55, 92, 241, 130, 210, 62, 81, 127, 210, 78, 3, 95, 35, 72, 221, 34, 5, 200, 194, 215, 102, 191, 60, 52, 30, 164, 242, 52, 255, 64, 199, 132, 23, 249, 234, 50, 171, 242, 160, 223 };
         public static readonly byte[] staticClientPrivKey = { 57, 16, 61, 194, 88, 158, 65, 114, 36, 14, 242, 62, 215, 205, 157, 122, 229, 105, 130, 118, 235, 214, 214, 25, 171, 106, 38, 200, 35, 185 };
@@ -76,17 +82,27 @@ namespace Andriy.MyChat.Client
 
         #region Parameters
 
-        public static string Server
-        { get { return server; } }
+        public string Server
+        {
+            get
+            {
+                return server;
+            }
+        }
 
-        public static string Login
-        { get { return login; } }
+        public string Login
+        {
+            get
+            {
+                return login;
+            }
+        }
 
         #endregion
 
         #region Init & stop
 
-        public static void init(string _serv, int _prt, string _login, string _password)
+        public void init(string _serv, int _prt, string _login, string _password)
         {
             server = _serv; 
             portNum = _prt; 
@@ -96,7 +112,7 @@ namespace Andriy.MyChat.Client
             initClient();
         }        
 
-        public static void initClient()
+        public void initClient()
         {
             freeClient();
             client = new TcpClient(server, portNum);            
@@ -104,7 +120,7 @@ namespace Andriy.MyChat.Client
             stream.ReadTimeout = 7000;
         }
 
-        public static void startListener()
+        public void startListener()
         {
             if (listenerThread != null)
                 stopListener();
@@ -114,12 +130,12 @@ namespace Andriy.MyChat.Client
             Logger.Info("Listening started");
         }
 
-        public static void stopListener()
+        public void stopListener()
         {
             listenerThread.Abort();
         }
 
-        public static void freeClient()
+        public void freeClient()
         {
             if (client != null)
             {
@@ -135,7 +151,7 @@ namespace Andriy.MyChat.Client
 
         #region listenToServer
 
-        public static void listenToServer()
+        public void listenToServer()
         {
             try
             {
@@ -188,8 +204,10 @@ namespace Andriy.MyChat.Client
                                     listenQueue.Dequeue().toDo();
                                     break;
                                 }
-                                else throw new Exception("Server sent unknown token");
+                                
+                                throw new Exception("Server sent unknown token");
                         }
+
                         mut.ReleaseMutex();
                     }
                 }
@@ -212,7 +230,7 @@ namespace Andriy.MyChat.Client
         /// Performs authentification
         /// </summary>
         /// <returns>0 if OK, 1 if wrong, 2 if exception</returns>
-        public static int performAuth()
+        public int performAuth()
         {
             try
             {
@@ -237,7 +255,7 @@ namespace Andriy.MyChat.Client
             }
         }
 
-        public static bool performAgreement()
+        public bool performAgreement()
         {
             try
             {
@@ -260,7 +278,7 @@ namespace Andriy.MyChat.Client
             }
         }
 
-        public static int performLogonDef()
+        public int performLogonDef()
         {
             try
             {                
@@ -301,7 +319,7 @@ namespace Andriy.MyChat.Client
             }
         }
 
-        public static int performRegDef(bool autologin)//return 3 - server 
+        public int performRegDef(bool autologin)//return 3 - server 
         {
             try
             {                
@@ -345,7 +363,7 @@ namespace Andriy.MyChat.Client
             }
         }
 
-        public static void queueChatMsg(byte type, string dest, string msg)
+        public void queueChatMsg(byte type, string dest, string msg)
         {
             sendQueue.Enqueue(() =>
                 {
@@ -356,20 +374,20 @@ namespace Andriy.MyChat.Client
                 });
         }
 
-        public static void requestRooms(Action ac)//type 8
+        public void requestRooms(Action ac)//type 8
         {
             listenQueue.Enqueue(new ListenProcessor(8, ac));
             stream.WriteByte(8);//Requesting rooms          
         }
 
-        public static void requestRoomUsers(string room, Action ac)//type 11
+        public void requestRoomUsers(string room, Action ac)//type 11
         {
             listenQueue.Enqueue(new ListenProcessor(11, ac));
             stream.WriteByte(11);//Requesting room users
             writeWrappedMsg(stream, System.Text.Encoding.UTF8.GetBytes(room));
         }
 
-        public static string[] getRooms()
+        public string[] getRooms()
         {
             Byte[] bytes = readWrappedMsg(stream);
             if (bytes[0] == 0)
@@ -378,7 +396,7 @@ namespace Andriy.MyChat.Client
                 throw new Exception("Invalid responce from server");
         }
 
-        public static string[] getRoomUsers()
+        public string[] getRoomUsers()
         {
             Byte[] bytes = readWrappedMsg(stream);
             if (bytes[0] == 0)
@@ -387,7 +405,7 @@ namespace Andriy.MyChat.Client
                 throw new Exception("Invalid responce from server");
         }
 
-        public static bool performJoinRoom(string room, string pass)//type 6
+        public bool performJoinRoom(string room, string pass)//type 6
         {
             Byte[] bytes = formatJoinRoomMsg(room, pass);
             while (stream.DataAvailable) { }//wait until nothing to read
@@ -410,7 +428,7 @@ namespace Andriy.MyChat.Client
             }
         }
 
-        public static bool performLogout()//type 7
+        public bool performLogout()//type 7
         {
             //int resp = -2;
             //while (stream.DataAvailable) { }//wait until nothing to read            
@@ -422,7 +440,7 @@ namespace Andriy.MyChat.Client
             return true;
         }
 
-        public static bool performLeaveRoom(string room)//type 9
+        public bool performLeaveRoom(string room)//type 9
         {
             msgProcessor.removeProcessor(room);
             if (msgProcessor.RoomCount == 0)//if user leaved all rooms
@@ -528,7 +546,7 @@ namespace Andriy.MyChat.Client
         //
         //header = type + source(login) + room/user size(Int32) + messageSize(Int32)        
 
-        private static Byte[] formatChatMsg(Byte msgtype, string dest, string message)//dest sometimes is "all"
+        private Byte[] formatChatMsg(Byte msgtype, string dest, string message)//dest sometimes is "all"
         {
             //int headerSize = 13;
             Byte[] sourceB = System.Text.Encoding.UTF8.GetBytes(login);
@@ -548,7 +566,7 @@ namespace Andriy.MyChat.Client
             return msg;
         }
 
-        private static Byte[] formatChatMsgSign(Byte msgtype, string dest, string message)//dest sometimes is "all"
+        private Byte[] formatChatMsgSign(Byte msgtype, string dest, string message)//dest sometimes is "all"
         {
             //int headerSize = 13;
             Byte[] sourceB = System.Text.Encoding.UTF8.GetBytes(login);

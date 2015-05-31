@@ -8,12 +8,15 @@ namespace Andriy.MyChat.Client
 
     public partial class SelRoomForm : Form
     {
+        private ChatClient chatClient;
+
         //volatile string[] rms = null;
 
-        public SelRoomForm()
+        public SelRoomForm(ChatClient chatClient)
         {            
-            this.InitializeComponent();            
+            this.InitializeComponent();
 
+            this.chatClient = chatClient;
             this.refreshRooms();
             this.tbRoom.Text = "r1";
             this.tbPass.Text="r1pass";
@@ -23,18 +26,18 @@ namespace Andriy.MyChat.Client
         public void refreshRooms()
         {            
             this.cbRoomList.Text = "Refresh pending...";
-            ChatClient.requestRooms(() =>
-            {                
-                string[] rms = ChatClient.getRooms();
+            chatClient.requestRooms(() =>
+            {
+                string[] rms = chatClient.getRooms();
                 this.cbRoomListAction(rms);
             });            
         }
 
         private void bCancel_Click(object sender, EventArgs e)
         {
-            if (ChatClient.msgProcessor.RoomCount == 0)
+            if (chatClient.msgProcessor.RoomCount == 0)
             {
-                ChatClient.stopListener();
+                chatClient.stopListener();
                 Application.Exit();
             }
             else this.Close();
@@ -52,9 +55,9 @@ namespace Andriy.MyChat.Client
                 room = this.cbRoomList.Text;
             }
             else throw new Exception("Radio buttons dont work");
-            if (ChatClient.performJoinRoom(room, this.tbPass.Text))
+            if (chatClient.performJoinRoom(room, this.tbPass.Text))
             {
-                ChatForm chatForm1 = new ChatForm(room);
+                var chatForm1 = new ChatForm(this.chatClient, room);
                 chatForm1.Show();
                 this.Close();
             }

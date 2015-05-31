@@ -35,24 +35,26 @@
 
             var server = new ChatServer(serverDataContext, this.ServerPort);
 
-            ChatClient.init("localhost", this.ServerPort, Login, Pass);
-            var authResult = ChatClient.performAuth();
+            var chatClient = new ChatClient();
+
+            chatClient.init("localhost", this.ServerPort, Login, Pass);
+            var authResult = chatClient.performAuth();
             Assert.AreEqual(0, authResult);
 
-            var clientServerAgreementEstablished = ChatClient.performAgreement();
+            var clientServerAgreementEstablished = chatClient.performAgreement();
             Assert.True(clientServerAgreementEstablished);
 
-            var logonResult = ChatClient.performLogonDef();
+            var logonResult = chatClient.performLogonDef();
             Assert.AreEqual(0, logonResult);
 
-            ChatClient.startListener();
+            chatClient.startListener();
 
-            var joinRoomResult = ChatClient.performJoinRoom("r1", "testRoomPass");
+            var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
             Assert.True(joinRoomResult);
 
             var messageReceivedBack = false;
             var syncRef = new object();
-            ChatClient.msgProcessor.addProcessor(
+            chatClient.msgProcessor.addProcessor(
                 "r1",
                 (source, dest, msg) =>
                     {
@@ -65,7 +67,7 @@
                         }
                     });
 
-            ChatClient.queueChatMsg(3, "r1", "testMsg");
+            chatClient.queueChatMsg(3, "r1", "testMsg");
 
             Func<bool> messageReceivedBackRead = () =>
                 {
@@ -86,7 +88,7 @@
             Task.WaitAll(new[] { waiter }, 2000);
             Assert.True(messageReceivedBackRead());
 
-            ChatClient.stopListener();
+            chatClient.stopListener();
             server.Finish();
         }
     }

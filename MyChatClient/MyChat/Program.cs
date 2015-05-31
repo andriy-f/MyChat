@@ -5,9 +5,11 @@
     using System.IO;
     using System.Windows.Forms;
 
-    static class Program
+    public static class Program
     {
-        static string logFile = @"%TEMP%\MyChat.log";
+        internal static string logFile = @"%TEMP%\MyChat.log";
+
+        private static ChatClient chatClient;
 
         /// <summary>
         /// The main entry point for the application.
@@ -22,7 +24,9 @@
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new LogonForm());
+
+            chatClient = new ChatClient();
+            Application.Run(new LogonForm(chatClient));
         }
 
         #region Logging

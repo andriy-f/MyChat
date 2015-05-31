@@ -6,23 +6,28 @@
 
     public partial class LogonForm : Form
     {
-        public LogonForm()
+        private ChatClient chatClient;
+
+        public LogonForm(ChatClient chatClient)
         {
             this.InitializeComponent();
 
-            //System.Threading.Thread.CurrentThread.Priority = System.Threading.ThreadPriority.Lowest;
+            ////System.Threading.Thread.CurrentThread.Priority = System.Threading.ThreadPriority.Lowest;
 
+            this.chatClient = chatClient;
+
+            // TODO: remove after debug
             this.tbLogin.Text = "user1";
             this.tbPass.Text = "qwe`123";
 
             this.cbServer.Text = Properties.Settings.Default.DefServer;
-            this.nudPort.Value=Convert.ToDecimal(Properties.Settings.Default.DefPort);
+            this.nudPort.Value = Convert.ToDecimal(Properties.Settings.Default.DefPort);
         }
 
         private void bLogin_Click(object sender, EventArgs e)
         {
-            ChatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
-            if (this.performAuth() && ChatClient.performAgreement())
+            chatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
+            if (this.performAuth() && chatClient.performAgreement())
             {
                 this.performLogon();
             }
@@ -46,8 +51,8 @@
         {
             if (this.tbRegLogin.Text != "" && this.tbRegPass.Text != "" && this.tbRegPass.Text == this.tbRegConf.Text)
             {
-                ChatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbRegLogin.Text, this.tbRegPass.Text);
-                if (this.performAuth() && ChatClient.performAgreement())
+                chatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbRegLogin.Text, this.tbRegPass.Text);
+                if (this.performAuth() && chatClient.performAgreement())
                 {
                     
                     this.performReg();
@@ -63,7 +68,7 @@
 
         private bool performAuth()
         {
-            int rs = ChatClient.performAuth();
+            int rs = chatClient.performAuth();
             switch (rs)
             {
                 case 0:
@@ -88,12 +93,12 @@
 
         private void performLogon()
         {
-            int rs = ChatClient.performLogonDef();
+            int rs = chatClient.performLogonDef();
             switch (rs)
             {
                 case 0://Success                    
-                    ChatClient.startListener();
-                    SelRoomForm selroomform1 = new SelRoomForm();
+                    chatClient.startListener();
+                    SelRoomForm selroomform1 = new SelRoomForm(chatClient);
                     this.Hide();
                     selroomform1.Show();
                     break;
@@ -117,7 +122,7 @@
 
         private void performReg()
         {
-            switch (ChatClient.performRegDef(false))
+            switch (chatClient.performRegDef(false))
             {
                 case 0:
                     MessageBox.Show(String.Format("Registration success: User '{0}' is now registered", this.tbRegLogin.Text));
@@ -133,7 +138,6 @@
 
         private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
         {
-
         }     
     }    
 }

@@ -6,20 +6,19 @@ namespace Andriy.MyChat.Client
     using System.Windows.Forms;
 
     public partial class ChatForm : Form
-    {        
+    {
+        private ChatClient chatClient;
+        
         public string room;
 
-        public ChatForm()
-        {
-            this.InitializeComponent();            
-        }
-
-        public ChatForm(string lroom)
+        public ChatForm(ChatClient chatClient, string lroom)
         {            
             this.InitializeComponent();
+
+            this.chatClient = chatClient;
             this.room = lroom;
-            this.Text = String.Format("User '{0}' at room '{1}' on server '{2}'", ChatClient.Login, this.room, ChatClient.Server);
-            ChatClient.msgProcessor.addProcessor(this.room, this.OnReceiveMsg);//Ala event
+            this.Text = String.Format("User '{0}' at room '{1}' on server '{2}'", chatClient.Login, this.room, chatClient.Server);
+            chatClient.msgProcessor.addProcessor(this.room, this.OnReceiveMsg);//Ala event
             this.refreshDestination();
         }
 
@@ -39,25 +38,25 @@ namespace Andriy.MyChat.Client
 
         private void bSend_Click(object sender, EventArgs e)
         {
-            if (this.cbDest.Text == "<Room>")            
-                ChatClient.queueChatMsg(3, this.room, this.rtbMsg.Text);
+            if (this.cbDest.Text == "<Room>")
+                chatClient.queueChatMsg(3, this.room, this.rtbMsg.Text);
             else if(this.cbDest.Text == "<All>")
-                ChatClient.queueChatMsg(5, "All", this.rtbMsg.Text);
+                chatClient.queueChatMsg(5, "All", this.rtbMsg.Text);
             else
-                ChatClient.queueChatMsg(4, this.cbDest.Text, this.rtbMsg.Text);
+                chatClient.queueChatMsg(4, this.cbDest.Text, this.rtbMsg.Text);
             this.rtbMsg.Clear();
         }
 
         private void bLeave_Click(object sender, EventArgs e)
         {
-            if (ChatClient.performLeaveRoom(this.room))            
+            if (chatClient.performLeaveRoom(this.room))            
                 this.Close();
             else MessageBox.Show("Error while leaving room");
         }
 
         private void bJoinAnRoom_Click(object sender, EventArgs e)
         {
-            SelRoomForm selroomform1 = new SelRoomForm();
+            SelRoomForm selroomform1 = new SelRoomForm(chatClient);
             selroomform1.Show();
         }        
 
@@ -67,9 +66,9 @@ namespace Andriy.MyChat.Client
             this.cbDest.Items.Add("<Room>");
             this.cbDest.Items.Add("<All>");
             this.cbDest.Text = "<Room>";
-            ChatClient.requestRoomUsers(this.room, () =>
+            chatClient.requestRoomUsers(this.room, () =>
                 {
-                    string[] users = ChatClient.getRoomUsers();
+                    string[] users = chatClient.getRoomUsers();
                     this.refreshDestinationInvoke(users);
                 });
         }
@@ -94,7 +93,7 @@ namespace Andriy.MyChat.Client
 
         private void ChatForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            ChatClient.stopListener();
+            chatClient.stopListener();
             Application.Exit();
         }
 
