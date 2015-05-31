@@ -170,9 +170,9 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\MyChatServerLibrary\MyChatServerLibrary.csproj">
+    <ProjectReference Include="..\..\MyChatServerLibrary\MyChat.Server.Core.csproj">
       <Project>{937810c7-d05c-48b3-99b6-0d04957ea422}</Project>
-      <Name>MyChatServerLibrary</Name>
+      <Name>MyChat.Server.Core</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
