@@ -24,6 +24,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{33D349
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyChat.Client.Core", "MyChat.Client.Core\MyChat.Client.Core.csproj", "{3ADD4ED4-8D9E-4C45-88D9-699BB744D829}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyChat.IntegrationTests", "MyChat.IntegrationTests\MyChat.IntegrationTests.csproj", "{E6A25CE8-10A2-4ED5-B122-BEAD6DBA854D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{3ADD4ED4-8D9E-4C45-88D9-699BB744D829}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3ADD4ED4-8D9E-4C45-88D9-699BB744D829}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3ADD4ED4-8D9E-4C45-88D9-699BB744D829}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6A25CE8-10A2-4ED5-B122-BEAD6DBA854D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6A25CE8-10A2-4ED5-B122-BEAD6DBA854D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6A25CE8-10A2-4ED5-B122-BEAD6DBA854D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6A25CE8-10A2-4ED5-B122-BEAD6DBA854D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
