@@ -32,9 +32,13 @@ namespace Andriy.MyChat.Client
 
     using Andriy.MyChat.Client.Crypto;
 
+    using global::MyChat.Client.Core.Logging;
+
     public static class ChatClient
     {
         #region Fields
+
+        private static readonly ILog Logger = LogProvider.GetLogger(typeof(ChatClient));
 
         static int portNum = 13000;
         static string server = "localhost";
@@ -45,7 +49,7 @@ namespace Andriy.MyChat.Client
         static TcpClient client = null;
         static NetworkStream stream = null;
 
-        internal static MsgProcessor msgProcessor = new MsgProcessor();
+        public static MsgProcessor msgProcessor = new MsgProcessor();
         internal static Queue<ListenProcessor> listenQueue = new Queue<ListenProcessor>();
         internal static Queue<Action> sendQueue = new Queue<Action>();
 
@@ -104,7 +108,7 @@ namespace Andriy.MyChat.Client
             listenerThread = new System.Threading.Thread(new System.Threading.ThreadStart(listenToServer));
             listenerThread.Priority = System.Threading.ThreadPriority.Lowest;
             listenerThread.Start();
-            Program.LogEvent("Listening started");
+            Logger.Info("Listening started");
         }
 
         public static void stopListener()
@@ -155,21 +159,21 @@ namespace Andriy.MyChat.Client
                                 streamData = readWrappedEncMsg(stream);//streamData[0] must == 3
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
-                                Program.LogEvent(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
+                                Logger.Info(string.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
                                 msgProcessor.processForRoom(source, dest, message);
                                 break;
                             case 4://Incoming Message for user
                                 streamData = readWrappedEncMsg(stream);//streamData[0] must == 4
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
-                                Program.LogEvent(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
+                                Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
                                 msgProcessor.process(source, dest, message);
                                 break;
                             case 5://Incoming Message for All
                                 streamData = readWrappedEncMsg(stream);//streamData[0] must == 5
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
-                                Program.LogEvent(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
+                                Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
                                 msgProcessor.process(source, dest, message);
                                 break;
                             case 10:
@@ -189,11 +193,11 @@ namespace Andriy.MyChat.Client
             }
             catch (System.Threading.ThreadAbortException)
             {
-                Program.LogEvent("Listener stopped by aborting (normal)");
+                Logger.Info("Listener stopped by aborting (normal)");
             }
             catch (Exception ex)
             {
-                Program.LogException(new Exception("Error while listening to server", ex));                
+                Logger.Error(new Exception("Error while listening to server", ex).ToString());                
             }
         }
 
@@ -205,7 +209,7 @@ namespace Andriy.MyChat.Client
         /// Performs authentification
         /// </summary>
         /// <returns>0 if OK, 1 if wrong, 2 if exception</returns>
-        internal static int performAuth()
+        public static int performAuth()
         {
             try
             {
@@ -225,12 +229,12 @@ namespace Andriy.MyChat.Client
             }
             catch (Exception ex)
             {
-                Program.LogEvent(String.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
+                Logger.Debug(String.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
                 return 2;
             }
         }
 
-        internal static bool performAgreement()
+        public static bool performAgreement()
         {
             try
             {
@@ -248,7 +252,7 @@ namespace Andriy.MyChat.Client
             }
             catch (Exception ex)
             {
-                Program.LogEvent(String.Format("Error while completing agreement: {0}{1}", Environment.NewLine, ex));
+                Logger.Debug(String.Format("Error while completing agreement: {0}{1}", Environment.NewLine, ex));
                 return false;
             }
         }
@@ -264,14 +268,14 @@ namespace Andriy.MyChat.Client
                 switch (resp)
                 {
                     case 0://Success
-                        Program.LogEvent(String.Format("Logon success with login '{0}'", login));                        
+                        Logger.Debug(String.Format("Logon success with login '{0}'", login));                        
                         break;
                     case 1://Already logged on
-                        Program.LogEvent(String.Format("Logon fail: User '{0}' already logged on", login));
+                        Logger.Debug(String.Format("Logon fail: User '{0}' already logged on", login));
                         freeClient();
                         break;
                     case 2://Invalid login/pass
-                        Program.LogEvent(String.Format("Logon fail: Invalid login//pass"));
+                        Logger.Debug(String.Format("Logon fail: Invalid login//pass"));
                         freeClient();
                         break;
                 }
@@ -279,17 +283,17 @@ namespace Andriy.MyChat.Client
             }
             catch (ArgumentNullException ex)
             {
-                Program.LogException(ex);                
+                Logger.Error(ex.ToString);                
                 return 3;
             }
             catch (SocketException ex)
             {
-                Program.LogException(ex);
+                Logger.Error(ex.ToString);
                 return 4;
             }
             catch (Exception ex)
             {
-                Program.LogException(ex);
+                Logger.Error(ex.ToString);
                 return 5;
             }
         }
@@ -306,16 +310,16 @@ namespace Andriy.MyChat.Client
                 switch (resp)
                 {
                     case 0://Success
-                        Program.LogEvent(String.Format("Registration success: User '{0}' is now registered", login));
+                        Logger.Debug(String.Format("Registration success: User '{0}' is now registered", login));
                         if (!autologin)
                             freeClient();
                         break;
                     case 1://Already exist
-                        Program.LogEvent(String.Format("Registration failed: User '{0}' already registered", login));
+                        Logger.Debug(String.Format("Registration failed: User '{0}' already registered", login));
                         freeClient();
                         break;                    
                     default:
-                        Program.LogEvent("Registration failed: invalid server response");
+                        Logger.Debug("Registration failed: invalid server response");
                         return 3;
                         //break;
                 }
@@ -323,17 +327,17 @@ namespace Andriy.MyChat.Client
             }
             catch (ArgumentNullException ex)
             {
-                Program.LogException(ex);   
+                Logger.Error(ex.ToString);
                 return 3; 
             }
             catch (SocketException ex)
             {
-                Program.LogException(ex);   
+                Logger.Error(ex.ToString);
                 return 4; 
             }
             catch (Exception ex)
             {
-                Program.LogException(ex);
+                Logger.Error(ex.ToString); 
                 return 5;
             }
         }
@@ -342,7 +346,7 @@ namespace Andriy.MyChat.Client
         {
             sendQueue.Enqueue(() =>
                 {
-                    Program.LogEvent("queue");
+                    Logger.Debug("queue");
                     Byte[] data = formatChatMsg(type, dest, msg);
                     stream.WriteByte(type);
                     writeWrappedEncMsg(stream, data);

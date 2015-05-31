@@ -2,7 +2,7 @@
 {
     using System.Collections;
 
-    class MsgProcessor
+    public class MsgProcessor
     {
         public delegate void ReceiveMsgProcessor(string source, string dest, string msg);
 
