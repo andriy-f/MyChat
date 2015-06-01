@@ -8,6 +8,8 @@
 
     using Andriy.Security.Cryptography;
 
+    using global::MyChat.Common.Logging;
+
     /// <summary>
     /// client == null -> client incative
     /// 
@@ -22,7 +24,7 @@
 
         private readonly NetworkStream tcpStream;
         
-        private static readonly log4net.ILog Log = log4net.LogManager.GetLogger(typeof(ChatClient));
+        private static readonly ILog Log = LogProvider.GetLogger(typeof(ChatClient));
 
         /// <summary>
         /// Must be list of unique. TODO: convert type to roomParams
