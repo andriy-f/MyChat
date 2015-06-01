@@ -107,11 +107,12 @@
             var server = new ChatServer(serverDataContext, this.ServerPort);
 
             var clientList = new List<ChatClient>(10);
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 10; i++)
             {
                 clientList.Add(this.SetUpChatClient(LoginPrefix + i, PassPrefix + i));
             }
 
+            int j = 0;
             foreach (var chatClient in clientList)
             {
                 var messageReceivedBack = false;
@@ -120,7 +121,7 @@
                     "r1",
                     (source, dest, msg) =>
                         {
-                            if (msg == "testMsg")
+                            if (source == LoginPrefix + j && msg == "testMsg" + j)
                             {
                                 lock (syncRef)
                                 {
@@ -129,7 +130,7 @@
                             }
                         });
 
-                chatClient.queueChatMsg(3, "r1", "testMsg");
+                chatClient.queueChatMsg(3, "r1", "testMsg" + j);
 
                 Func<bool> messageReceivedBackRead = () =>
                     {
@@ -149,6 +150,7 @@
                         });
                 Task.WaitAll(new[] { waiter }, 5000);
                 Assert.True(messageReceivedBackRead());
+                j++;
             }
 
             foreach (var chatClient in clientList)
