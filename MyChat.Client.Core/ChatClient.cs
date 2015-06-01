@@ -58,9 +58,9 @@ namespace Andriy.MyChat.Client
 
         public MsgProcessor msgProcessor = new MsgProcessor();
 
-        internal static Queue<ListenProcessor> listenQueue = new Queue<ListenProcessor>();
+        internal Queue<ListenProcessor> listenQueue = new Queue<ListenProcessor>();
 
-        internal static Queue<Action> sendQueue = new Queue<Action>();
+        internal Queue<Action> sendQueue = new Queue<Action>();
 
         private System.Threading.Thread listenerThread;
         private System.Threading.Mutex mut = new System.Threading.Mutex();
@@ -70,10 +70,10 @@ namespace Andriy.MyChat.Client
         
         static byte[] iv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
-        static ECDSAWrapper staticDsaClientSigner;//signs with staticClientPrivKey
-        static ECDSAWrapper staticDsaServerChecker;//check with staticServerPubKey 
+        ECDSAWrapper staticDsaClientSigner;//signs with staticClientPrivKey
+        ECDSAWrapper staticDsaServerChecker;//check with staticServerPubKey 
 
-        static AESCSPImpl cryptor;
+        AESCSPImpl cryptor;
 
         //static ECDSAWrapper seanceDsaClientSigner;//signs client's messages
         //static ECDSAWrapper seanceDsaServerChecker;//checks servers messages
@@ -635,7 +635,7 @@ namespace Andriy.MyChat.Client
 
         #region Signing
 
-        private static void initStaticDSA()
+        private void initStaticDSA()
         {
             staticDsaClientSigner = new ECDSAWrapper(1, true, staticClientPrivKey);
             staticDsaServerChecker = new ECDSAWrapper(1, false, staticServerPubKey);
@@ -672,7 +672,7 @@ namespace Andriy.MyChat.Client
             else throw new ArgumentException("Too small to read incoming data", "read");
         }
 
-        static Byte[] readWrappedEncMsg(NetworkStream stream)
+        private Byte[] readWrappedEncMsg(NetworkStream stream)
         {
             int streamDataSize = readInt32(stream);
             Byte[] streamData = new Byte[streamDataSize];
@@ -688,7 +688,7 @@ namespace Andriy.MyChat.Client
             stream.Write(data, 0, data.Length);
         }
 
-        static void writeWrappedEncMsg(NetworkStream stream, Byte[] plain)
+        private void writeWrappedEncMsg(NetworkStream stream, Byte[] plain)
         {
             byte[] bytes = cryptor.Encrypt(plain);
             Byte[] data = new Byte[4 + bytes.Length];
