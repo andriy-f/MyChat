@@ -123,7 +123,7 @@
  
         private void StopServerAndExit()
         {
-            Program.Server.Finish();
+            Program.Server.Stop();
             Application.Exit();
         }
 

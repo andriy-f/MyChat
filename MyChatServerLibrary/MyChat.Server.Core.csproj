@@ -47,7 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChatClient.cs" />
+    <Compile Include="ClientEndpoint.cs" />
     <Compile Include="ChatServer.cs" />
     <Compile Include="Consts.cs" />
     <Compile Include="ConvertUtils.cs" />

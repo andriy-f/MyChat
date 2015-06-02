@@ -4,15 +4,15 @@
 
     public interface IServer
     {
-        IEnumerable<ChatClient> GetChatClients();
+        IEnumerable<ClientEndpoint> GetChatClients();
 
-        ChatClient GetChatClient(string login);
+        ClientEndpoint GetChatClient(string login);
 
         RoomParams GetRoom(string name);
 
         IEnumerable<string> GetRoomsNames();
 
-        void StageClientForRemoval(ChatClient client);
+        void StageClientForRemoval(ClientEndpoint clientEndpoint);
 
         bool RoomExist(string room);
 

@@ -90,7 +90,7 @@
             Assert.True(messageReceivedBackRead());
 
             chatClient.stopListener();
-            server.Finish();
+            server.Stop();
         }
 
         [Test]
@@ -158,7 +158,7 @@
                 chatClient.stopListener();
             }
 
-            server.Finish();
+            server.Stop();
         }
 
         private ChatClient SetUpChatClient(string login, string pass)

@@ -16,22 +16,24 @@
     /// TODO:
     /// 1. implement IDIsposeable to free TcpClient and it's stream
     /// </summary>
-    public class ChatClient
+    public class ClientEndpoint
     {
         private const int AgreementLength = 32;
+
+        private static readonly ILog Log = LogProvider.GetLogger(typeof(ClientEndpoint));
+
+        private static readonly byte[] CryptoIv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
         private readonly IServer server;
 
         private readonly NetworkStream tcpStream;
         
-        private static readonly ILog Log = LogProvider.GetLogger(typeof(ChatClient));
-
         /// <summary>
         /// Must be list of unique. TODO: convert type to roomParams
         /// </summary>
         private List<string> rooms = new List<string>(3);
 
-        public ChatClient(IServer server, TcpClient client)
+        public ClientEndpoint(IServer server, TcpClient client)
         {
             this.server = server;
             this.Tcp = client;
@@ -258,7 +260,7 @@
                 var aeskey = new byte[AESKeyLength];
                 Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
 
-                this.Cryptor = new AESCSPImpl(aeskey, ChatServer.CryptoIv1);
+                this.Cryptor = new AESCSPImpl(aeskey, CryptoIv1);
                 return 0;
             }
             catch (Exception ex)
