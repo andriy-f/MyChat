@@ -324,7 +324,7 @@
 
             try
             {
-                var chatClient = new ClientEndpoint(this, tcp);
+                var chatClient = new ClientEndpoint(this, this.dataContext, tcp);
                 int authatt = chatClient.Verify();
                 switch (authatt)
                 {
@@ -429,7 +429,7 @@
 
         private void ProcessAndAcceptNewClient(TcpClient client, string login, AESCSPImpl cryptor1)
         {
-            var chatClient = new ClientEndpoint(this, client);
+            var chatClient = new ClientEndpoint(this, this.dataContext, client);
             chatClient.Login = login;
             chatClient.Cryptor = cryptor1;
             this.clients.Add(login, chatClient);

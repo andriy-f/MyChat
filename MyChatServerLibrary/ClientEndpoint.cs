@@ -4,8 +4,11 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Net;
     using System.Net.Sockets;
 
+    using Andriy.MyChat.Server.DAL;
+    using Andriy.MyChat.Server.Exceptions;
     using Andriy.Security.Cryptography;
 
     using global::MyChat.Common.Logging;
@@ -26,6 +29,8 @@
 
         private readonly IServer server;
 
+        private readonly IDataContext dataContext;
+
         private readonly NetworkStream tcpStream;
         
         /// <summary>
@@ -33,9 +38,10 @@
         /// </summary>
         private List<string> rooms = new List<string>(3);
 
-        public ClientEndpoint(IServer server, TcpClient client)
+        public ClientEndpoint(IServer server, IDataContext context, TcpClient client)
         {
             this.server = server;
+            this.dataContext = context;
             this.Tcp = client;
             this.tcpStream = client.GetStream();
             this.tcpStream.ReadTimeout = 1000; // TODO: remove this from server
@@ -69,6 +75,105 @@
         public string Login { get; set; }
 
         internal Credentials Credentials { get; private set; }
+
+        // Work in progress
+        ////public void ProcessPendingConnection()
+        ////{
+        ////    IPAddress clientIPAddress;
+
+        ////    try
+        ////    {
+        ////        clientIPAddress = Utils.TCPClient2IPAddress(this.Tcp);
+        ////        Log.DebugFormat("Connected from {0}", clientIPAddress);
+        ////        this.ValidateClientApplication();
+        ////        this.ProveItself();
+        ////        this.InitSecureChannel();
+                
+        ////        var type = this.ReadByte();
+        ////        switch (type)
+        ////        {
+        ////            case 0:
+        ////                // Logon attempt
+        ////                this.ReadCredentials();
+        ////                if (this.dataContext.ValidateLoginPass(this.Credentials.Login, this.Credentials.Pasword))
+        ////                {
+        ////                    if (this.IsLogged(chatClient.Credentials.Login))
+        ////                    {
+        ////                        var existingClient = this.clients[chatClient.Credentials.Login];
+        ////                        if (existingClient.PokeForAlive())
+        ////                        {
+        ////                            // Client with login <login> still alive -> new login attempt invalid
+        ////                            clientStream.WriteByte(1);
+        ////                            FreeTCPClient(tcp);
+        ////                            Log.DebugFormat(
+        ////                                    "Logon from IP '{0}' failed: User '{1}' already logged on",
+        ////                                    clientIPAddress,
+        ////                                    chatClient.Credentials.Login);
+        ////                        }
+        ////                        else
+        ////                        {
+        ////                            // old client with login <login> dead -> dispose of him and connect new
+        ////                            FreeTCPClient(existingClient.Tcp);
+        ////                            this.RemoveClient(chatClient.Credentials.Login);
+        ////                            this.ProcessAndAcceptNewClient(tcp, chatClient.Credentials.Login, chatClient.Cryptor);
+        ////                            Log.DebugFormat(
+        ////                                    "Logon from IP '{0}' success: User '{1}' from IP  logged on (old client disposed)",
+        ////                                    clientIPAddress,
+        ////                                    chatClient.Credentials.Login);
+        ////                        }
+        ////                    }
+        ////                    else
+        ////                    {
+        ////                        this.ProcessAndAcceptNewClient(tcp, chatClient.Credentials.Login, chatClient.Cryptor);
+        ////                        Log.DebugFormat(
+        ////                                "Logon from IP '{0}' success: User '{1}' from IP  logged on",
+        ////                                clientIPAddress,
+        ////                                chatClient.Credentials.Login);
+        ////                    }
+        ////                }
+        ////                else
+        ////                {
+        ////                    clientStream.WriteByte(2);
+        ////                    FreeTCPClient(tcp);
+        ////                    Log.DebugFormat(
+        ////                            "Logon from IP '{0}' failed: Login '{1}'//Password not recognized",
+        ////                            clientIPAddress,
+        ////                            chatClient.Credentials.Login);
+        ////                }
+
+        ////                break;
+        ////            case 1:
+
+        ////                // Registration without logon
+        ////                chatClient.ReadCredentials();
+        ////                if (!this.dataContext.LoginExists(chatClient.Credentials.Login))
+        ////                {
+        ////                    this.dataContext.AddUser(chatClient.Credentials.Login, chatClient.Credentials.Pasword);
+        ////                    clientStream.WriteByte(0);
+        ////                    Log.DebugFormat("Registration success: User '{0}' registered", chatClient.Credentials.Login);
+        ////                }
+        ////                else
+        ////                {
+        ////                    clientStream.WriteByte(1);
+        ////                    Log.DebugFormat("Registration failed: User '{0}' already registered", chatClient.Credentials.Login);
+        ////                }
+
+        ////                FreeTCPClient(tcp);
+        ////                break;
+        ////            default:
+
+        ////                // Wrong data received
+        ////                throw new Exception();
+        ////        }
+        ////    }
+        ////    catch (Exception ex)
+        ////    {
+        ////        Log.Error(new Exception(string.Format("Client application connected from {0}, but was invalid", clientIPAddress), ex));
+        ////        this.FreeTCPClient();
+
+        ////        // Ban IP ipAddress...
+        ////    }
+        ////}
 
         public void ProcessCurrentConnection()
         {
@@ -271,6 +376,38 @@
             }
         }
 
+        /// <summary>
+        /// Init secure channel (this.Cryptor)
+        /// </summary>
+        /// <returns></returns>
+        private void InitSecureChannel()
+        {
+            try
+            {
+                var ecdh1 = new ECDHWrapper(AgreementLength);
+                var recCliPub = this.ReadWrappedMsg();
+                this.WriteWrappedMsg(ecdh1.PubData);
+                var agr = ecdh1.calcAgreement(recCliPub);
+
+                const int AESKeyLength = 32;
+                var aeskey = new byte[AESKeyLength];
+                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
+
+                this.Cryptor = new AESCSPImpl(aeskey, CryptoIv1);
+            }
+            catch (Exception ex)
+            {
+                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
+                this.Cryptor = null;
+                throw new SecureChannelInitFailedException(string.Empty, ex);
+            }
+        }
+
+        private void HandleLoginProcedure()
+        {
+            
+        }
+
         private static int ReadInt32(NetworkStream stream)
         {
             var data = new byte[4];
@@ -387,6 +524,7 @@
         /// i.e. if it has valid private key
         /// </summary> 
         /// <returns>0 if ok, 1 if wrong</returns>
+        [Obsolete("THis method is obsolete. Use ValidateClientApplication() instead.")]
         internal int Verify()
         {
             try
@@ -419,6 +557,50 @@
                 Log.DebugFormat("Error while authentificating: {0}{1}", Environment.NewLine, ex);
                 return 1;
             }
+        }
+
+        /// <summary>
+        /// Check if client [application] is original, 
+        /// i.e. if it has valid private key
+        /// </summary> 
+        /// <returns>0 if ok, 1 if wrong</returns>
+        private void ValidateClientApplication()
+        {
+            try
+            {
+                var stream = this.tcpStream;
+
+                // Check if client is legit
+                var send = MyRandoms.GenerateSecureRandomBytes(100);
+                ChatServer.WriteWrappedMsg(stream, send);
+                var rec = ChatServer.ReadWrappedMsg(stream);
+
+                // Program.LogEvent(HexRep.ToString(rec));
+                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
+                if (!clientLegit)
+                {
+                    throw new ClientProgramInvalidException("Chat client program was not authenticated");
+                }
+            }
+            catch (ClientProgramInvalidException ex)
+            {
+                Log.DebugFormat("Error while authentificating: {0}",  ex);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.DebugFormat("Error while authentificating: {0}", ex);
+                throw new ClientProgramInvalidException(string.Empty, ex);
+            }
+        }
+
+        private void ProveItself()
+        {
+            // Clients want to know if server is legit
+            var rec = ChatServer.ReadWrappedMsg(this.tcpStream);
+            var send = Crypto.Utils.ServerSigner.signHash(rec);
+            ChatServer.WriteWrappedMsg(this.tcpStream, send);
+            this.CurrentStatus = Status.Verified;
         }
 
         private static void ParseChatMsg(byte[] bytes, out string source, out string dest, out string message)

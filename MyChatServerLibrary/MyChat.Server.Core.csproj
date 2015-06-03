@@ -56,6 +56,8 @@
     <Compile Include="DAL\DataContext.cs" />
     <Compile Include="DAL\IDataContext.cs" />
     <Compile Include="DAL\MemoryDataContext.cs" />
+    <Compile Include="Exceptions\SecureChannelInitFailedException.cs" />
+    <Compile Include="Exceptions\ClientProgramInvalidException.cs" />
     <Compile Include="Formatting\BinaryFormatter.cs" />
     <Compile Include="IServer.cs" />
     <Compile Include="Message.cs" />
