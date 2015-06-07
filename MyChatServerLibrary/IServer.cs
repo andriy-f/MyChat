@@ -18,6 +18,12 @@
 
         bool ConfirmRoomPass(string roomName, string password);
 
+        void AddLoggedInUser(string login, ClientEndpoint clientEndpoint);
+
+        bool IsLoggedIn(string login);
+
+        void RemoveClient(string login);
+
         void AddUserToRoom(string room, string login);
 
         bool TryCreateRoom(string name, string password);
