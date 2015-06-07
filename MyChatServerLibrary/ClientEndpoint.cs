@@ -12,6 +12,7 @@
     using Andriy.Security.Cryptography;
 
     using global::MyChat.Common.Logging;
+    using global::MyChat.Common.Network;
 
     /// <summary>
     /// client == null -> client incative
@@ -40,12 +41,15 @@
         /// </summary>
         private readonly List<string> rooms = new List<string>(3);
 
+        private IStreamWrapper messageFramer;
+
         public ClientEndpoint(IServer server, IDataContext context, TcpClient client)
         {
             this.server = server;
             this.dataContext = context;
             this.Tcp = client;
             this.tcpStream = client.GetStream();
+            this.messageFramer = new FramedProtocol(this.tcpStream);
             this.clientIPAddress = Utils.TCPClient2IPAddress(this.Tcp);
             this.tcpStream.ReadTimeout = 1000; // TODO: remove this from server
             this.CurrentStatus = Status.Uninitialized;

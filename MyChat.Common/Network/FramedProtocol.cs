@@ -3,6 +3,9 @@
     using System;
     using System.IO;
 
+    /// <summary>
+    /// Enforces boundaries for messages
+    /// </summary>
     public class FramedProtocol : IStreamWrapper
     {
         private readonly Stream wrappedStream;
