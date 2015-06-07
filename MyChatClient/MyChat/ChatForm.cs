@@ -5,6 +5,8 @@ namespace Andriy.MyChat.Client
     using System;
     using System.Windows.Forms;
 
+    using global::MyChat.Client.Core;
+
     public partial class ChatForm : Form
     {
         private ChatClient chatClient;
@@ -18,7 +20,7 @@ namespace Andriy.MyChat.Client
             this.chatClient = chatClient;
             this.room = lroom;
             this.Text = String.Format("User '{0}' at room '{1}' on server '{2}'", chatClient.Login, this.room, chatClient.Server);
-            chatClient.msgProcessor.addProcessor(this.room, this.OnReceiveMsg);//Ala event
+            chatClient.MessageProcessor.addProcessor(this.room, this.OnReceiveMsg);//Ala event
             this.refreshDestination();
         }
 
@@ -49,7 +51,7 @@ namespace Andriy.MyChat.Client
 
         private void bLeave_Click(object sender, EventArgs e)
         {
-            if (chatClient.performLeaveRoom(this.room))            
+            if (chatClient.PerformLeaveRoom(this.room))            
                 this.Close();
             else MessageBox.Show("Error while leaving room");
         }
@@ -93,7 +95,7 @@ namespace Andriy.MyChat.Client
 
         private void ChatForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            chatClient.stopListener();
+            chatClient.StopListener();
             Application.Exit();
         }
 

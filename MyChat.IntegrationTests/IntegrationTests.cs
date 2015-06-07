@@ -13,7 +13,7 @@
 
     using NUnit.Framework;
 
-    using ChatClient = Andriy.MyChat.Client.ChatClient;
+    using ChatClient = MyChat.Client.Core.ChatClient;
 
     [TestFixture]
     public class IntegrationTests
@@ -38,8 +38,8 @@
 
             var chatClient = new ChatClient();
 
-            chatClient.init("localhost", this.ServerPort, Login, Pass);
-            var authResult = chatClient.performAuth();
+            chatClient.Init("localhost", this.ServerPort, Login, Pass);
+            var authResult = chatClient.PerformAuth();
             Assert.AreEqual(0, authResult);
 
             var clientServerAgreementEstablished = chatClient.performAgreement();
@@ -48,14 +48,14 @@
             var logonResult = chatClient.performLogonDef();
             Assert.AreEqual(0, logonResult);
 
-            chatClient.startListener();
+            chatClient.StartListener();
 
             var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
             Assert.True(joinRoomResult);
 
             var messageReceivedBack = false;
             var syncRef = new object();
-            chatClient.msgProcessor.addProcessor(
+            chatClient.MessageProcessor.addProcessor(
                 "r1",
                 (source, dest, msg) =>
                     {
@@ -89,7 +89,7 @@
             Task.WaitAll(new[] { waiter }, 5000);
             Assert.True(messageReceivedBackRead());
 
-            chatClient.stopListener();
+            chatClient.StopListener();
             server.Stop();
         }
 
@@ -117,7 +117,7 @@
             {
                 var messageReceivedBack = false;
                 var syncRef = new object();
-                chatClient.msgProcessor.addProcessor(
+                chatClient.MessageProcessor.addProcessor(
                     "r1",
                     (source, dest, msg) =>
                         {
@@ -155,7 +155,7 @@
 
             foreach (var chatClient in clientList)
             {
-                chatClient.stopListener();
+                chatClient.StopListener();
             }
 
             server.Stop();
@@ -165,8 +165,8 @@
         {
             var chatClient = new ChatClient();
 
-            chatClient.init("localhost", this.ServerPort, login, pass);
-            var authResult = chatClient.performAuth();
+            chatClient.Init("localhost", this.ServerPort, login, pass);
+            var authResult = chatClient.PerformAuth();
             Assert.AreEqual(0, authResult);
 
             var clientServerAgreementEstablished = chatClient.performAgreement();
@@ -175,7 +175,7 @@
             var logonResult = chatClient.performLogonDef();
             Assert.AreEqual(0, logonResult);
 
-            chatClient.startListener();
+            chatClient.StartListener();
 
             var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
             Assert.True(joinRoomResult);

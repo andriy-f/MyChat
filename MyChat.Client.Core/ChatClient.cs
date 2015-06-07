@@ -1,214 +1,178 @@
-﻿//ChatClient.cs - for handling and sending requests to server
-//--------------------------------------------------------------
-
-//--------------------------------Queries to server-------------------------------------------
-//type - in 1st byte
-//type 0 - authorization(login) answers: 0-success, 1-already logged on, 2-invalid login/pass
-//type 1 - registration ans: 0-success, 1-already exist, 2 - registration unaviable
-//type 2 - type 1 + autologin
-
-//type 3,4,5 - chat message 
-//type 6 - join room - if room !exist => create with pass, else check pass
-//type 7 - logout
-//type 8 - get rooms
-//type 9 - leave room  
-//type 10 - check if alive
-//typr 11 - get room users
-
-//----------------------------------Messages From Server------------------------------------
-//type 3 4 5 - incoming message
-//message header = <type>+ sourceBSize+destBSize+messageBSize+(styleSize)
-//message data   = source, dest, message, (style)
-//-------------------------------------------------------------------------
-
-//Needed improvements:
-//1. stream must be accessed only from listenToServer or lock stream while working with it
-
-namespace Andriy.MyChat.Client
+﻿namespace MyChat.Client.Core
 {
     using System;
     using System.Collections.Generic;
     using System.Net.Sockets;
 
+    using Andriy.MyChat.Client;
     using Andriy.Security.Cryptography;
 
     using global::MyChat.Client.Core.Logging;
 
-    using ECDHWrapper = Andriy.Security.Cryptography.ECDHWrapper;
-    using ECDSAWrapper = Andriy.Security.Cryptography.ECDSAWrapper;
+    /// <summary>
+    /// -- Queries to server: --
+    /// type - in 1st byte
+    /// type 0 - authorization(login) answers: 0-success, 1-already logged on, 2-invalid login/pass
+    /// type 1 - registration ans: 0-success, 1-already exist, 2 - registration unaviable
+    /// type 2 - type 1 + autologin
 
+    /// type 3,4,5 - chat message 
+    /// type 6 - join room - if room !exist => create with pass, else check pass
+    /// type 7 - logout
+    /// type 8 - get rooms
+    /// type 9 - leave room  
+    /// type 10 - check if alive
+    /// typr 11 - get room users
+    /// ----------------------------------Messages From Server------------------------------------
+    /// type 3 4 5 - incoming message
+    /// message header = &lt;type&gt; + sourceBSize+destBSize+messageBSize+(styleSize)
+    /// message data   = source, dest, message, (style)
+    /// -------------------------------------------------------------------------
+    /// Needed improvements:
+    /// 1. stream must be accessed only from listenToServer or lock stream while working with it
+    /// </summary>
     public class ChatClient
     {
-        #region Fields
-
-        const int agrlen = 32;
+        private const int AgreementLength = 32;
 
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(ChatClient));
 
-        int portNum = 13000;
+        private static readonly byte[] StaticServerPublicKey = { 4, 81, 97, 253, 33, 148, 211, 27, 164, 103, 98, 244, 190, 246, 165, 216, 112, 148, 56, 28, 38, 55, 92, 241, 130, 210, 62, 81, 127, 210, 78, 3, 95, 35, 72, 221, 34, 5, 200, 194, 215, 102, 191, 60, 52, 30, 164, 242, 52, 255, 64, 199, 132, 23, 249, 234, 50, 171, 242, 160, 223 };
 
-        string server = "localhost";
+        private static readonly byte[] StaticClientPrivateKey = { 57, 16, 61, 194, 88, 158, 65, 114, 36, 14, 242, 62, 215, 205, 157, 122, 229, 105, 130, 118, 235, 214, 214, 25, 171, 106, 38, 200, 35, 185 };
 
-        string login = "";
+        private static readonly byte[] Iv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
 
-        string password = "";
+        private readonly MsgProcessor messageProcessor = new MsgProcessor();
+
+        private readonly Queue<ListenProcessor> listenQueue = new Queue<ListenProcessor>();
+
+        private readonly Queue<Action> sendQueue = new Queue<Action>();
+
+        private readonly System.Threading.Mutex mut = new System.Threading.Mutex();
+        
+        private int portNum;
+
+        private string password;
         
         private TcpClient client;
+
         private NetworkStream stream;
 
-        public MsgProcessor msgProcessor = new MsgProcessor();
-
-        internal Queue<ListenProcessor> listenQueue = new Queue<ListenProcessor>();
-
-        internal Queue<Action> sendQueue = new Queue<Action>();
-
         private System.Threading.Thread listenerThread;
-        private System.Threading.Mutex mut = new System.Threading.Mutex();
-
-        public static readonly byte[] staticServerPubKey = { 4, 81, 97, 253, 33, 148, 211, 27, 164, 103, 98, 244, 190, 246, 165, 216, 112, 148, 56, 28, 38, 55, 92, 241, 130, 210, 62, 81, 127, 210, 78, 3, 95, 35, 72, 221, 34, 5, 200, 194, 215, 102, 191, 60, 52, 30, 164, 242, 52, 255, 64, 199, 132, 23, 249, 234, 50, 171, 242, 160, 223 };
-        public static readonly byte[] staticClientPrivKey = { 57, 16, 61, 194, 88, 158, 65, 114, 36, 14, 242, 62, 215, 205, 157, 122, 229, 105, 130, 118, 235, 214, 214, 25, 171, 106, 38, 200, 35, 185 };
         
-        static byte[] iv1 = { 111, 62, 131, 223, 199, 122, 219, 32, 13, 147, 249, 67, 137, 161, 97, 104 };
+        private ECDSAWrapper staticDsaClientSigner;//signs with staticClientPrivKey
 
-        ECDSAWrapper staticDsaClientSigner;//signs with staticClientPrivKey
-        ECDSAWrapper staticDsaServerChecker;//check with staticServerPubKey 
+        private ECDSAWrapper staticDsaServerChecker;//check with staticServerPubKey 
 
-        AESCSPImpl cryptor;
+        private AESCSPImpl cryptor;
 
-        //static ECDSAWrapper seanceDsaClientSigner;//signs client's messages
-        //static ECDSAWrapper seanceDsaServerChecker;//checks servers messages
+        ////static ECDSAWrapper seanceDsaClientSigner;//signs client's messages
+        ////static ECDSAWrapper seanceDsaServerChecker;//checks servers messages
 
-        #endregion
-
-        #region Parameters
-
-        public string Server
+        public MsgProcessor MessageProcessor
         {
             get
             {
-                return server;
+                return this.messageProcessor;
             }
         }
 
-        public string Login
+        public string Server { get; private set; }
+
+        public string Login { get; private set; }
+
+        public void Init(string _serv, int _prt, string _login, string _password)
         {
-            get
-            {
-                return login;
-            }
-        }
-
-        #endregion
-
-        #region Init & stop
-
-        public void init(string _serv, int _prt, string _login, string _password)
-        {
-            server = _serv; 
-            portNum = _prt; 
-            login = _login; 
-            password = _password;
-            initStaticDSA();
-            initClient();
+            this.Server = _serv; 
+            this.portNum = _prt; 
+            this.Login = _login; 
+            this.password = _password;
+            this.InitStaticDSA();
+            this.FreeClient();
+            this.client = new TcpClient(this.Server, this.portNum);
+            this.stream = this.client.GetStream();
+            this.stream.ReadTimeout = 7000;
         }        
 
-        public void initClient()
+        public void StartListener()
         {
-            freeClient();
-            client = new TcpClient(server, portNum);            
-            stream = client.GetStream();
-            stream.ReadTimeout = 7000;
-        }
+            if (this.listenerThread != null)
+            {
+                this.StopListener();
+            }
 
-        public void startListener()
-        {
-            if (listenerThread != null)
-                stopListener();
-            listenerThread = new System.Threading.Thread(new System.Threading.ThreadStart(listenToServer));
-            listenerThread.Priority = System.Threading.ThreadPriority.Lowest;
-            listenerThread.Start();
+            this.listenerThread = new System.Threading.Thread(this.ListenToServer)
+                                      {
+                                          Priority = System.Threading.ThreadPriority.Lowest
+                                      };
+            this.listenerThread.Start();
             Logger.Info("Listening started");
         }
 
-        public void stopListener()
+        public void StopListener()
         {
-            listenerThread.Abort();
+            this.listenerThread.Abort();
         }
 
-        public void freeClient()
-        {
-            if (client != null)
-            {
-                if(client.Connected)
-                    client.GetStream().Close();
-                client.Close();
-                stream = null; 
-                client = null;                
-            }
-        }
-
-        #endregion
-
-        #region listenToServer
-
-        public void listenToServer()
+        public void ListenToServer()
         {
             try
             {
-                //throw new IndexOutOfRangeException(); find way to report to GUI
+                ////throw new IndexOutOfRangeException(); TODO: find way to report to GUI
                 while (true)
                 {
-                    if (sendQueue.Count > 0)
+                    if (this.sendQueue.Count > 0)
                     {
-                        Action toSend = sendQueue.Dequeue();
+                        Action toSend = this.sendQueue.Dequeue();
                         toSend();
                     }
-                    if (stream.DataAvailable)
+                    if (this.stream.DataAvailable)
                     {
-                        mut.WaitOne();
+                        this.mut.WaitOne();
                         Byte[] streamData;// = readWrappedMsg(stream);
-                        int type = stream.ReadByte();
+                        int type = this.stream.ReadByte();
                         string source, dest, message;
                         switch (type)
                         {
                             case 1:                                
-                                msgProcessor.process("Server", "<unknown>", "Previous message was not deivered");
+                                this.MessageProcessor.process("Server", "<unknown>", "Previous message was not deivered");
                                 break;
                             case 3://Incoming Message for room                                    
-                                streamData = readWrappedEncMsg(stream);//streamData[0] must == 3
+                                streamData = this.ReadWrappedEncMsg(this.stream);//streamData[0] must == 3
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
                                 Logger.Info(string.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
-                                msgProcessor.processForRoom(source, dest, message);
+                                this.MessageProcessor.processForRoom(source, dest, message);
                                 break;
                             case 4://Incoming Message for user
-                                streamData = readWrappedEncMsg(stream);//streamData[0] must == 4
+                                streamData = this.ReadWrappedEncMsg(this.stream);//streamData[0] must == 4
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
                                 Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
-                                msgProcessor.process(source, dest, message);
+                                this.MessageProcessor.process(source, dest, message);
                                 break;
                             case 5://Incoming Message for All
-                                streamData = readWrappedEncMsg(stream);//streamData[0] must == 5
+                                streamData = this.ReadWrappedEncMsg(this.stream);//streamData[0] must == 5
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
                                 Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
-                                msgProcessor.process(source, dest, message);
+                                this.MessageProcessor.process(source, dest, message);
                                 break;
                             case 10:
-                                stream.WriteByte(10);//I'm alive!
+                                this.stream.WriteByte(10);//I'm alive!
                                 break;
                             default:
-                                if (listenQueue.Count > 0 && type == listenQueue.Peek().code)
+                                if (this.listenQueue.Count > 0 && type == this.listenQueue.Peek().code)
                                 {
-                                    listenQueue.Dequeue().toDo();
+                                    this.listenQueue.Dequeue().toDo();
                                     break;
                                 }
                                 
                                 throw new Exception("Server sent unknown token");
                         }
 
-                        mut.ReleaseMutex();
+                        this.mut.ReleaseMutex();
                     }
                 }
             }
@@ -222,31 +186,32 @@ namespace Andriy.MyChat.Client
             }
         }
 
-        #endregion
-
         #region Perform
 
         /// <summary>
         /// Performs authentification
         /// </summary>
         /// <returns>0 if OK, 1 if wrong, 2 if exception</returns>
-        public int performAuth()
+        public int PerformAuth()
         {
             try
             {
-                //server sends random data which client must sign
-                byte[] rec = readWrappedMsg(stream);
-                byte[] send = staticDsaClientSigner.signHash(rec);
-                writeWrappedMsg(stream, send);
-                //now client checks that server is legit
-                //client gen random data which server must sign
-                send = genSecRandomBytes(100);
-                writeWrappedMsg(stream, send);
-                rec = readWrappedMsg(stream);
-                if (staticDsaServerChecker.verifyHash(send, rec))
+                // Server sends random data which client must sign
+                byte[] rec = ReadWrappedMsg(this.stream);
+                byte[] send = this.staticDsaClientSigner.signHash(rec);
+                WriteWrappedMsg(this.stream, send);
+                
+                // Now client checks that server is legit
+                // Client gen random data which server must sign
+                send = GenSecRandomBytes(100);
+                WriteWrappedMsg(this.stream, send);
+                rec = ReadWrappedMsg(this.stream);
+                if (this.staticDsaServerChecker.verifyHash(send, rec))
+                {
                     return 0;
-                else 
-                    return 1;
+                }
+
+                return 1;
             }
             catch (Exception ex)
             {
@@ -259,16 +224,16 @@ namespace Andriy.MyChat.Client
         {
             try
             {
-                ECDHWrapper ecdh1 = new ECDHWrapper(agrlen);
-                writeWrappedMsg(stream, ecdh1.PubData);                
-                byte[] recSerPub = readWrappedMsg(stream);
+                ECDHWrapper ecdh1 = new ECDHWrapper(AgreementLength);
+                WriteWrappedMsg(this.stream, ecdh1.PubData);                
+                byte[] recSerPub = ReadWrappedMsg(this.stream);
                 byte[] agr = ecdh1.calcAgreement(recSerPub);
 
                 int aeskeylen=32;
                 byte[] aeskey=new byte[aeskeylen];
                 Array.Copy(agr, 0, aeskey, 0, aeskeylen);
 
-                cryptor = new AESCSPImpl(aeskey, iv1);                
+                this.cryptor = new AESCSPImpl(aeskey, Iv1);                
                 return true;
             }
             catch (Exception ex)
@@ -282,22 +247,22 @@ namespace Andriy.MyChat.Client
         {
             try
             {                
-                Byte[] data = ChatClient.formatLogonMsg(login, password);
-                stream.WriteByte(0);//Identifies logon attempt
-                writeWrappedEncMsg(stream, data);
-                int resp = stream.ReadByte();//Ans
+                Byte[] data = ChatClient.formatLogonMsg(this.Login, this.password);
+                this.stream.WriteByte(0);//Identifies logon attempt
+                this.WriteWrappedEncMsg(this.stream, data);
+                int resp = this.stream.ReadByte();//Ans
                 switch (resp)
                 {
                     case 0://Success
-                        Logger.Debug(String.Format("Logon success with login '{0}'", login));                        
+                        Logger.Debug(String.Format("Logon success with login '{0}'", this.Login));                        
                         break;
                     case 1://Already logged on
-                        Logger.Debug(String.Format("Logon fail: User '{0}' already logged on", login));
-                        freeClient();
+                        Logger.Debug(String.Format("Logon fail: User '{0}' already logged on", this.Login));
+                        this.FreeClient();
                         break;
                     case 2://Invalid login/pass
                         Logger.Debug(String.Format("Logon fail: Invalid login//pass"));
-                        freeClient();
+                        this.FreeClient();
                         break;
                 }
                 return resp;
@@ -323,21 +288,21 @@ namespace Andriy.MyChat.Client
         {
             try
             {                
-                Byte[] data = ChatClient.formatLogonMsg(login, password);
+                Byte[] data = ChatClient.formatLogonMsg(this.Login, this.password);
                 data[0] = autologin ? (byte)2 : (byte)1;//Registration header now
-                stream.WriteByte(data[0]);//Identifies Registration attempt
-                writeWrappedEncMsg(stream, data);
-                int resp = stream.ReadByte();//Ans
+                this.stream.WriteByte(data[0]);//Identifies Registration attempt
+                this.WriteWrappedEncMsg(this.stream, data);
+                int resp = this.stream.ReadByte();//Ans
                 switch (resp)
                 {
                     case 0://Success
-                        Logger.Debug(String.Format("Registration success: User '{0}' is now registered", login));
+                        Logger.Debug(String.Format("Registration success: User '{0}' is now registered", this.Login));
                         if (!autologin)
-                            freeClient();
+                            this.FreeClient();
                         break;
                     case 1://Already exist
-                        Logger.Debug(String.Format("Registration failed: User '{0}' already registered", login));
-                        freeClient();
+                        Logger.Debug(String.Format("Registration failed: User '{0}' already registered", this.Login));
+                        this.FreeClient();
                         break;                    
                     default:
                         Logger.Debug("Registration failed: invalid server response");
@@ -365,31 +330,31 @@ namespace Andriy.MyChat.Client
 
         public void queueChatMsg(byte type, string dest, string msg)
         {
-            sendQueue.Enqueue(() =>
+            this.sendQueue.Enqueue(() =>
                 {
                     Logger.Debug("queue");
-                    Byte[] data = formatChatMsg(type, dest, msg);
-                    stream.WriteByte(type);
-                    writeWrappedEncMsg(stream, data);
+                    Byte[] data = this.formatChatMsg(type, dest, msg);
+                    this.stream.WriteByte(type);
+                    this.WriteWrappedEncMsg(this.stream, data);
                 });
         }
 
         public void requestRooms(Action ac)//type 8
         {
-            listenQueue.Enqueue(new ListenProcessor(8, ac));
-            stream.WriteByte(8);//Requesting rooms          
+            this.listenQueue.Enqueue(new ListenProcessor(8, ac));
+            this.stream.WriteByte(8);//Requesting rooms          
         }
 
         public void requestRoomUsers(string room, Action ac)//type 11
         {
-            listenQueue.Enqueue(new ListenProcessor(11, ac));
-            stream.WriteByte(11);//Requesting room users
-            writeWrappedMsg(stream, System.Text.Encoding.UTF8.GetBytes(room));
+            this.listenQueue.Enqueue(new ListenProcessor(11, ac));
+            this.stream.WriteByte(11);//Requesting room users
+            WriteWrappedMsg(this.stream, System.Text.Encoding.UTF8.GetBytes(room));
         }
 
         public string[] getRooms()
         {
-            Byte[] bytes = readWrappedMsg(stream);
+            Byte[] bytes = ReadWrappedMsg(this.stream);
             if (bytes[0] == 0)
                 return parseGetRoomsMsgAns(bytes);
             else
@@ -398,66 +363,71 @@ namespace Andriy.MyChat.Client
 
         public string[] getRoomUsers()
         {
-            Byte[] bytes = readWrappedMsg(stream);
+            Byte[] bytes = ReadWrappedMsg(this.stream);
             if (bytes[0] == 0)
-                return parseGetRoomUsers(bytes);
+                return ParseGetRoomUsers(bytes);
             else
                 throw new Exception("Invalid responce from server");
         }
 
         public bool performJoinRoom(string room, string pass)//type 6
         {
-            Byte[] bytes = formatJoinRoomMsg(room, pass);
-            while (stream.DataAvailable) { }//wait until nothing to read
+            Byte[] bytes = FormatJoinRoomMsg(room, pass);
+            while (this.stream.DataAvailable) { }//wait until nothing to read
             int resp = -2;
-            mut.WaitOne();
-            stream.WriteByte(6);//Acnowledge server about action
-            writeWrappedEncMsg(stream, bytes);
-            resp = stream.ReadByte();
-            mut.ReleaseMutex();
+            this.mut.WaitOne();
+            this.stream.WriteByte(6);//Acnowledge server about action
+            this.WriteWrappedEncMsg(this.stream, bytes);
+            resp = this.stream.ReadByte();
+            this.mut.ReleaseMutex();
             switch (resp)
             {
-                case 0://success
+                case 0:
+                    // success
                     return true;
-                case 1://room already exist, invalid password
+                case 1:
+                    // room already exist, invalid password
                     return false;
-                case 2://can't create room
+                case 2:
+                    // can't create room
                     return false;
                 default:
                     throw new ChatClientException("Error joining room");
             }
         }
 
-        public bool performLogout()//type 7
+        // type 7
+        public bool PerformLogout()
         {
             //int resp = -2;
             //while (stream.DataAvailable) { }//wait until nothing to read            
-            mut.WaitOne();
-            stream.WriteByte(7);
+            this.mut.WaitOne();
+            this.stream.WriteByte(7);
             //resp = stream.ReadByte();
-            mut.ReleaseMutex();
+            this.mut.ReleaseMutex();
             //return (resp == 0);
             return true;
         }
 
-        public bool performLeaveRoom(string room)//type 9
+        // type 9
+        public bool PerformLeaveRoom(string room)
         {
-            msgProcessor.removeProcessor(room);
-            if (msgProcessor.RoomCount == 0)//if user leaved all rooms
+            this.MessageProcessor.removeProcessor(room);
+            if (this.MessageProcessor.RoomCount == 0)//if user leaved all rooms
             {
-                return performLogout();
+                return this.PerformLogout();
             }
             else
             {
-                Byte[] data = formatLeaveRoomMsg(room);
-                while (stream.DataAvailable) { }//wait until nothing to read
+                Byte[] data = FormatLeaveRoomMsg(room);
+                while (this.stream.DataAvailable) { }//wait until nothing to read
                 int resp = -2;
-                mut.WaitOne();
-                stream.WriteByte(9);
-                writeWrappedMsg(stream, data);
-                resp = stream.ReadByte();
-                mut.ReleaseMutex();
-                return (resp == 0);
+                this.mut.WaitOne();
+                this.stream.WriteByte(9);
+                WriteWrappedMsg(this.stream, data);
+                resp = this.stream.ReadByte();
+                this.mut.ReleaseMutex();
+                return resp == 0;
             }
         }
 
@@ -465,8 +435,8 @@ namespace Andriy.MyChat.Client
 
         #region Parsing
 
-        //type - 8, message=ansver+strings count+stringsize1+data1+stringsize2+data2+...
-        static string[] parseGetRoomsMsgAns(Byte[] bytes)
+        // type - 8, message=ansver+strings count+stringsize1+data1+stringsize2+data2+...
+        private static string[] parseGetRoomsMsgAns(Byte[] bytes)
         {
             //bytes[0] must be 0, if 1 then error
             string[] strs = null;
@@ -484,14 +454,14 @@ namespace Andriy.MyChat.Client
             return strs;
         }
 
-        static string[] parseGetRoomUsers(Byte[] bytes)
+        private static string[] ParseGetRoomUsers(Byte[] bytes)
         {
-            //bytes[0] must be 0, if 1 then error
+            // bytes[0] must be 0, if 1 then error
             string[] strs = null;
             int strCnt = BitConverter.ToInt32(bytes, 1);
             strs = new string[strCnt];
             int strBSize;
-            int pos = 5;//Position in message
+            int pos = 5; //Position in message
             for (int i = 0; i < strCnt; i++)
             {
                 strBSize = BitConverter.ToInt32(bytes, pos);
@@ -499,18 +469,20 @@ namespace Andriy.MyChat.Client
                 strs[i] = System.Text.Encoding.UTF8.GetString(bytes, pos, strBSize);
                 pos += strBSize;
             }
+
             return strs;
         }
 
         static void parseChatMsg(Byte[] bytes, out string source, out string dest, out string message)
         {
-            //bytes[0] must be 3, 4, or 5
-            //header Size =13
-            //Reading header
+            // bytes[0] must be 3, 4, or 5
+            // header Size =13
+            // Reading header
             int sourceBSize = BitConverter.ToInt32(bytes, 1);
             int destBSize = BitConverter.ToInt32(bytes, 5);
             int messageBSize = BitConverter.ToInt32(bytes, 9);
-            //Reading data                      
+            
+            // Reading data                      
             source = System.Text.Encoding.UTF8.GetString(bytes, 13, sourceBSize);
             dest = System.Text.Encoding.UTF8.GetString(bytes, 13 + sourceBSize, destBSize);
             message = System.Text.Encoding.UTF8.GetString(bytes, 13 + sourceBSize + destBSize, messageBSize);
@@ -530,35 +502,41 @@ namespace Andriy.MyChat.Client
             Byte[] passB = System.Text.Encoding.UTF8.GetBytes(pass);
             int authMessageSize = headerSize + loginB.Length + passB.Length;
             Byte[] authMessage = new Byte[authMessageSize];
+            
             //Constructing header
             authMessage[0] = 0;
             BitConverter.GetBytes(loginB.Length).CopyTo(authMessage, 1);
             BitConverter.GetBytes(passB.Length).CopyTo(authMessage, 5);
+            
             //Constructing data
             loginB.CopyTo(authMessage, headerSize);
             passB.CopyTo(authMessage, headerSize + loginB.Length);
             return authMessage;
         }
 
-        //---------------------------------------MESSAGE------------------------------------------------------------------------------------------
-        //message = header + data
-        //type: 3 - to room, 4 - to user, 5 - to everyone
-        //
-        //header = type + source(login) + room/user size(Int32) + messageSize(Int32)        
-
+        /// <summary>
+        /// message = header + data
+        /// header = type + source(login) + room/user size(Int32) + messageSize(Int32)    
+        /// </summary>
+        /// <param name="msgtype">type: 3 - to room, 4 - to user, 5 - to everyone</param>
+        /// <param name="dest"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
         private Byte[] formatChatMsg(Byte msgtype, string dest, string message)//dest sometimes is "all"
         {
             //int headerSize = 13;
-            Byte[] sourceB = System.Text.Encoding.UTF8.GetBytes(login);
+            Byte[] sourceB = System.Text.Encoding.UTF8.GetBytes(this.Login);
             Byte[] destB = System.Text.Encoding.UTF8.GetBytes(dest);
             Byte[] messageB = System.Text.Encoding.UTF8.GetBytes(message);
             int dataSize = sourceB.Length + destB.Length + messageB.Length;
+            
             //Header - 1+4+4+4         
             Byte[] msg = new Byte[13 + dataSize];
             msg[0] = msgtype;
             BitConverter.GetBytes(sourceB.Length).CopyTo(msg, 1);
             BitConverter.GetBytes(destB.Length).CopyTo(msg, 5);
             BitConverter.GetBytes(messageB.Length).CopyTo(msg, 9);
+            
             //data
             sourceB.CopyTo(msg, 13);
             destB.CopyTo(msg, 13 + sourceB.Length);
@@ -566,66 +544,42 @@ namespace Andriy.MyChat.Client
             return msg;
         }
 
-        private Byte[] formatChatMsgSign(Byte msgtype, string dest, string message)//dest sometimes is "all"
+        /// <summary>
+        /// Formats Join room binary message
+        /// message = "6"+header+data, header=RoomNameSize+passSize, data = bRoom+bPass
+        /// </summary>
+        /// <param name="room"></param>
+        /// <param name="pass"></param>
+        /// <returns></returns>
+        private static byte[] FormatJoinRoomMsg(string room, string pass)
         {
-            //int headerSize = 13;
-            Byte[] sourceB = System.Text.Encoding.UTF8.GetBytes(login);
-            Byte[] destB = System.Text.Encoding.UTF8.GetBytes(dest);
-            Byte[] messageB = System.Text.Encoding.UTF8.GetBytes(message);
-            //Byte[] 
-            int dataSize = sourceB.Length + destB.Length + messageB.Length;
-            //Header - 1+4+4+4 
-            Byte[] msg = new Byte[13 + dataSize];
-            msg[0] = msgtype;
-            BitConverter.GetBytes(sourceB.Length).CopyTo(msg, 1);
-            BitConverter.GetBytes(destB.Length).CopyTo(msg, 5);
-            BitConverter.GetBytes(messageB.Length).CopyTo(msg, 9);
-            //data
-            sourceB.CopyTo(msg, 13);
-            destB.CopyTo(msg, 13 + sourceB.Length);
-            messageB.CopyTo(msg, 13 + sourceB.Length + destB.Length);
-            return msg;
-        }
-
-        private static Byte[] signData(Byte[] data )
-        {
-            //Byte[] 
-            int dataSize = data.Length;
-            //Header - 1+4+4+4 
-            Byte[] sdata = new Byte[13 + dataSize];
-            
-            
-           
-            return sdata;
-        }
-
-        //------------------------------JOIN ROOM--------------------------------------------------
-        //message = "6"+header+data, header=RoomNameSize+passSize, data = bRoom+bPass
-        private static Byte[] formatJoinRoomMsg(string room, string pass)
-        {
-            Byte[] roomB = System.Text.Encoding.UTF8.GetBytes(room);
-            Byte[] passB = System.Text.Encoding.UTF8.GetBytes(pass);
+            var roomB = System.Text.Encoding.UTF8.GetBytes(room);
+            var passB = System.Text.Encoding.UTF8.GetBytes(pass);
             int roomBlen = roomB.Length,
                 passBlen = passB.Length;
-            int headerSize = 9;//1+4+4
-            int messageSize = headerSize + roomBlen + passBlen;
-            Byte[] message = new Byte[messageSize];
-            //Constructing header
+            
+            const int HeaderSize = 9; // 1+4+4
+            int messageSize = HeaderSize + roomBlen + passBlen;
+            var message = new Byte[messageSize];
+            
+            // Constructing header
             message[0] = 6;
             BitConverter.GetBytes(roomB.Length).CopyTo(message, 1);
             BitConverter.GetBytes(passB.Length).CopyTo(message, 5);
-            //Constructing data                    
-            roomB.CopyTo(message, headerSize);
-            passB.CopyTo(message, headerSize + roomBlen);
-            //Console.WriteLine("msglen {0}", message.Length);
+            
+            // Constructing data                    
+            roomB.CopyTo(message, HeaderSize);
+            passB.CopyTo(message, HeaderSize + roomBlen);
+            
+            // Console.WriteLine("msglen {0}", message.Length);
             return message;
         }
 
-        //msg = header(roomB length, 4 bytes) + room
-        private static Byte[] formatLeaveRoomMsg(string room)
+        // msg = header(roomB length, 4 bytes) + room
+        private static byte[] FormatLeaveRoomMsg(string room)
         {
-            Byte[] roomB = System.Text.Encoding.UTF8.GetBytes(room);
-            Byte[] msg = new Byte[4 + roomB.Length];//header + room
+            var roomB = System.Text.Encoding.UTF8.GetBytes(room);
+            var msg = new byte[4 + roomB.Length]; // header + room
             BitConverter.GetBytes(roomB.Length).CopyTo(msg, 0);
             roomB.CopyTo(msg, 4);
             return msg;
@@ -633,54 +587,49 @@ namespace Andriy.MyChat.Client
 
         #endregion
 
-        #region Signing
-
-        private void initStaticDSA()
+        private void InitStaticDSA()
         {
-            staticDsaClientSigner = new ECDSAWrapper(1, true, staticClientPrivKey);
-            staticDsaServerChecker = new ECDSAWrapper(1, false, staticServerPubKey);
+            this.staticDsaClientSigner = new ECDSAWrapper(1, true, StaticClientPrivateKey);
+            this.staticDsaServerChecker = new ECDSAWrapper(1, false, StaticServerPublicKey);
         }
-
-
-        #endregion
 
         #region ReadWrite wrapUnwrap
 
-        static int readInt32(NetworkStream stream)
+        static int ReadInt32(NetworkStream stream)
         {
             Byte[] data = new Byte[4];
             stream.Read(data, 0, data.Length);
             return BitConverter.ToInt32(data, 0);
         }
 
-        static Byte[] readWrappedMsg(NetworkStream stream)
+        static Byte[] ReadWrappedMsg(NetworkStream stream)
         {
-            int streamDataSize = readInt32(stream);            
+            int streamDataSize = ReadInt32(stream);            
             Byte[] streamData = new Byte[streamDataSize];
             stream.Read(streamData, 0, streamDataSize);
             return streamData;
         }
 
-        static int readWrappedMsg2(NetworkStream stream, ref byte[] read)
-        {
-            int streamDataSize = readInt32(stream);
-            if (streamDataSize >= read.Length)
-            {
-                int readSZ=stream.Read(read, 0, streamDataSize);
-                return readSZ;
-            }
-            else throw new ArgumentException("Too small to read incoming data", "read");
-        }
+        ////static int readWrappedMsg2(NetworkStream stream, ref byte[] read)
+        ////{
+        ////    int streamDataSize = readInt32(stream);
+        ////    if (streamDataSize >= read.Length)
+        ////    {
+        ////        int readSZ = stream.Read(read, 0, streamDataSize);
+        ////        return readSZ;
+        ////    }
+        ////    else throw new ArgumentException("Too small to read incoming data", "read");
+        ////}
 
-        private Byte[] readWrappedEncMsg(NetworkStream stream)
+        private Byte[] ReadWrappedEncMsg(NetworkStream stream)
         {
-            int streamDataSize = readInt32(stream);
+            int streamDataSize = ReadInt32(stream);
             Byte[] streamData = new Byte[streamDataSize];
             stream.Read(streamData, 0, streamDataSize);
-            return cryptor.Decrypt(streamData);            
+            return this.cryptor.Decrypt(streamData);            
         }
 
-        static void writeWrappedMsg(NetworkStream stream, Byte[] bytes)
+        static void WriteWrappedMsg(NetworkStream stream, Byte[] bytes)
         {
             Byte[] data = new Byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
@@ -688,9 +637,9 @@ namespace Andriy.MyChat.Client
             stream.Write(data, 0, data.Length);
         }
 
-        private void writeWrappedEncMsg(NetworkStream stream, Byte[] plain)
+        private void WriteWrappedEncMsg(NetworkStream stream, Byte[] plain)
         {
-            byte[] bytes = cryptor.Encrypt(plain);
+            byte[] bytes = this.cryptor.Encrypt(plain);
             Byte[] data = new Byte[4 + bytes.Length];
             BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
             bytes.CopyTo(data, 4);
@@ -698,148 +647,33 @@ namespace Andriy.MyChat.Client
         }
 
         #endregion
-
-        #region Generators
-        /// <summary>
-        /// Generates random byte array of set length
-        /// </summary>
-        /// <param name="len">length of return byte array</param>
-        /// <returns>random byte array of set length</returns>
-        static byte[] genRandomBytes(int len)
-        {
-            Random rand = new Random();
-            byte[] bytes = new byte[len];
-            rand.NextBytes(bytes);
-            return bytes;
-        }
 
         /// <summary>
         /// Generates secure random byte array of set length
         /// </summary>
         /// <param name="len">length of return byte array</param>
         /// <returns>secure random byte array of set length</returns>
-        static byte[] genSecRandomBytes(int len)
+        private static byte[] GenSecRandomBytes(int len)
         {
-            Org.BouncyCastle.Security.SecureRandom rand = new Org.BouncyCastle.Security.SecureRandom();
-            byte[] bytes = new byte[len];
+            var rand = new Org.BouncyCastle.Security.SecureRandom();
+            var bytes = new byte[len];
             rand.NextBytes(bytes);
             return bytes;
         }
-        #endregion
 
-        #region OBSOLETE
-
-        /*//header = "type"+header+data, header=size of data, data = room
-        public static Byte[] formatUpdateMsgOld(string room)
+        private void FreeClient()
         {
-            Byte[] roomB = System.Text.Encoding.UTF8.GetBytes(room);
-            int headerSize = 5;//1+4
-            int messageSize = headerSize + roomB.Length;
-            Byte[] message = new Byte[messageSize];
-            //Constructing header
-            message[0] = 6;
-            BitConverter.GetBytes(roomB.Length).CopyTo(message, 1);
-            //Constructing data                    
-            roomB.CopyTo(message, headerSize);
-            return message;
-        }
-		*/
-
-        /*//message = header + data
-        //type: 3 - to room, 4 - to user, 5 - to everyone
-        //
-        //if type = 3 or 4 --> header = type + room/user size(Int32) + messageSize(Int32)
-        //else header = type + messageSize
-
-        public static Byte[] formatChatMsgOld(Byte type, string dest, string messageText)
-        {
-            if (type == 3 || type == 4)
+            if (this.client != null)
             {
-                Byte[] destB = System.Text.Encoding.UTF8.GetBytes(dest);
-                Byte[] messageTextB = System.Text.Encoding.UTF8.GetBytes(messageText);
-                int headerSize = 9;//1+4+4
-                int chatMessageSize = headerSize + destB.Length + messageTextB.Length;
-                Byte[] chatMessage = new Byte[chatMessageSize];
-                //Constructing header
-                chatMessage[0] = type;
-                BitConverter.GetBytes(destB.Length).CopyTo(chatMessage, 1);
-                BitConverter.GetBytes(messageTextB.Length).CopyTo(chatMessage, 5);
-                //Constructing data
-                destB.CopyTo(chatMessage, headerSize);
-                messageTextB.CopyTo(chatMessage, headerSize + destB.Length);
-                return chatMessage;
-            }
-            else if (type == 5)
-            {
-                Byte[] messageTextB = System.Text.Encoding.UTF8.GetBytes(messageText);
-                int headerSize = 5;//1+4
-                int chatMessageSize = headerSize + messageTextB.Length;
-                Byte[] chatMessage = new Byte[chatMessageSize];
-                //Constructing header
-                chatMessage[0] = type;
-                BitConverter.GetBytes(messageTextB.Length).CopyTo(chatMessage, 1);
-                //Constructing data                    
-                messageTextB.CopyTo(chatMessage, headerSize);
-                return chatMessage;
-            }
-            else return null;
-        }
-        */
-
-        /*static void readIncomingMsg(NetworkStream stream, out string source, out string dest, out string message)
-        {
-            //Reading header
-            Byte[] bytes = new Byte[12];//4+4+4
-            stream.Read(bytes, 0, bytes.Length);
-            int sourceBSize = BitConverter.ToInt32(bytes, 0);
-            int destBSize = BitConverter.ToInt32(bytes, 4);
-            int messageBSize = BitConverter.ToInt32(bytes, 8);
-            //Reading data
-            int dataSize=sourceBSize+destBSize+messageBSize;
-            bytes = new Byte[dataSize];
-            stream.Read(bytes, 0, bytes.Length);
-            source = System.Text.Encoding.UTF8.GetString(bytes,0,sourceBSize);
-            dest = System.Text.Encoding.UTF8.GetString(bytes, sourceBSize, destBSize);
-            message = System.Text.Encoding.UTF8.GetString(bytes, sourceBSize+destBSize, messageBSize);
-        }*/
-
-        //type - 8, message=ansver+strings count+stringsize1+data1+stringsize2+data2+...
-        /*public static string[] readGetRoomsMsg()
-        {
-            NetworkStream stream = client.GetStream();
-            stream.WriteByte(8);
-            if (stream.DataAvailable)
-            {
-                Byte[] data = new Byte[1];
-                stream.Read(data, 0, 1);
-                Byte resp = data[0];
-                string[] strs = null;
-                switch (resp)
+                if (this.client.Connected)
                 {
-                    case 0://Success
-                        data = new Byte[4];
-                        stream.Read(data, 0, data.Length);
-                        int strCnt = BitConverter.ToInt32(data, 0);
-                        strs = new string[strCnt];
-
-                        Byte[] strB; int strBSize;
-                        for (int i = 0; i < strCnt; i++)
-                        {
-                            stream.Read(data, 0, data.Length);
-                            strBSize = BitConverter.ToInt32(data, 0);
-                            strB = new Byte[strBSize];
-                            stream.Read(strB, 0, strBSize);
-                            strs[i] = System.Text.Encoding.UTF8.GetString(strB);
-                        }
-                        break;
-                    default://Error
-                        Console.WriteLine("Invalid GetRooms message"); break;
+                    this.client.GetStream().Close();
                 }
-                return strs;
-            }
-            else return null;
-        }*/
 
-        #endregion
+                this.client.Close();
+                this.stream = null;
+                this.client = null;
+            }
+        }
     } 
 }

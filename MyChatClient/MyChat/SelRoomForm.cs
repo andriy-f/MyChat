@@ -6,6 +6,8 @@ namespace Andriy.MyChat.Client
     using System.ComponentModel;
     using System.Windows.Forms;
 
+    using global::MyChat.Client.Core;
+
     public partial class SelRoomForm : Form
     {
         private ChatClient chatClient;
@@ -35,9 +37,9 @@ namespace Andriy.MyChat.Client
 
         private void bCancel_Click(object sender, EventArgs e)
         {
-            if (chatClient.msgProcessor.RoomCount == 0)
+            if (chatClient.MessageProcessor.RoomCount == 0)
             {
-                chatClient.stopListener();
+                chatClient.StopListener();
                 Application.Exit();
             }
             else this.Close();

@@ -5,6 +5,8 @@
     using System.IO;
     using System.Windows.Forms;
 
+    using global::MyChat.Client.Core;
+
     public static class Program
     {
         internal static string logFile = @"%TEMP%\MyChat.log";

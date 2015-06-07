@@ -4,6 +4,8 @@
     using System.ComponentModel;
     using System.Windows.Forms;
 
+    using global::MyChat.Client.Core;
+
     public partial class LogonForm : Form
     {
         private ChatClient chatClient;
@@ -26,7 +28,7 @@
 
         private void bLogin_Click(object sender, EventArgs e)
         {
-            chatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
+            chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
             if (this.performAuth() && chatClient.performAgreement())
             {
                 this.performLogon();
@@ -51,7 +53,7 @@
         {
             if (this.tbRegLogin.Text != "" && this.tbRegPass.Text != "" && this.tbRegPass.Text == this.tbRegConf.Text)
             {
-                chatClient.init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbRegLogin.Text, this.tbRegPass.Text);
+                chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbRegLogin.Text, this.tbRegPass.Text);
                 if (this.performAuth() && chatClient.performAgreement())
                 {
                     
@@ -68,7 +70,7 @@
 
         private bool performAuth()
         {
-            int rs = chatClient.performAuth();
+            int rs = chatClient.PerformAuth();
             switch (rs)
             {
                 case 0:
@@ -97,7 +99,7 @@
             switch (rs)
             {
                 case 0://Success                    
-                    chatClient.startListener();
+                    chatClient.StartListener();
                     SelRoomForm selroomform1 = new SelRoomForm(chatClient);
                     this.Hide();
                     selroomform1.Show();
