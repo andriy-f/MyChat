@@ -55,22 +55,6 @@
 
         public int Port { get; private set; }
 
-        public static void WriteWrappedMsg(Stream stream, byte[] bytes)
-        {
-            var data = new byte[4 + bytes.Length];
-            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
-            bytes.CopyTo(data, 4);
-            stream.Write(data, 0, data.Length);
-        }
-
-        public static byte[] ReadWrappedMsg(NetworkStream stream)
-        {
-            int streamDataSize = ReadInt32(stream);
-            var streamData = new byte[streamDataSize];
-            stream.Read(streamData, 0, streamDataSize);
-            return streamData;
-        }
-
         public void Stop()
         {
             this.continueToListen = false;
@@ -129,12 +113,12 @@
             return this.roomBase.Keys;
         }
 
-        public void StageClientForRemoval(ClientEndpoint clientEndpoint)
+        public void QueueClientForRemoval(ClientEndpoint clientEndpoint)
         {
             this.unusedClients.Add(clientEndpoint.Login);
         }
 
-        public void FreeClientsStagedForRemoval()
+        public void FreeClientsQueuedForRemoval()
         {
             foreach (var flogin in this.unusedClients)
             {
@@ -196,13 +180,6 @@
             return data;
         }
         
-        private static int ReadInt32(NetworkStream stream)
-        {
-            var data = new byte[4];
-            stream.Read(data, 0, data.Length);
-            return BitConverter.ToInt32(data, 0);
-        }
-
         public void RemoveClient(string login)
         {
             this.clients[login].FreeTCPClient();
@@ -251,7 +228,7 @@
                             de.Value.ProcessCurrentConnection();
                         }
 
-                        this.FreeClientsStagedForRemoval();
+                        this.FreeClientsQueuedForRemoval();
 
                         // cleanupRooms(); // Free unocupied rooms - deprecated because of saving room params (password)
                     }

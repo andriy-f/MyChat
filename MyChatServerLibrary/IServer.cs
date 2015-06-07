@@ -12,7 +12,7 @@
 
         IEnumerable<string> GetRoomsNames();
 
-        void StageClientForRemoval(ClientEndpoint clientEndpoint);
+        void QueueClientForRemoval(ClientEndpoint clientEndpoint);
 
         bool RoomExist(string room);
 

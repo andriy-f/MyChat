@@ -32,13 +32,13 @@
         private readonly IDataContext dataContext;
 
         private readonly NetworkStream tcpStream;
-        
+
+        private readonly IPAddress clientIPAddress;
+
         /// <summary>
         /// Must be list of unique. TODO: convert type to roomParams
         /// </summary>
-        private List<string> rooms = new List<string>(3);
-
-        private readonly IPAddress clientIPAddress;
+        private readonly List<string> rooms = new List<string>(3);
 
         public ClientEndpoint(IServer server, IDataContext context, TcpClient client)
         {
@@ -202,7 +202,7 @@
                                 }
                                 catch (IOException)
                                 {
-                                    this.server.StageClientForRemoval(destinationClient1);
+                                    this.server.QueueClientForRemoval(destinationClient1);
                                 }
                             }
                         }
@@ -227,7 +227,7 @@
                             }
                             catch (IOException)
                             {
-                                this.server.StageClientForRemoval(destinationClient);
+                                this.server.QueueClientForRemoval(destinationClient);
                             }
                         }
                         else
@@ -252,7 +252,7 @@
                             }
                             catch (IOException)
                             {
-                                this.server.StageClientForRemoval(destinationClient1);
+                                this.server.QueueClientForRemoval(destinationClient1);
                             }
                         }
 
@@ -292,7 +292,7 @@
                         break;
                     case 7: // Logout //user - de.Key, room.users - de.Key, if room empty -> delete
                         this.SendByte(0); // Approve
-                        this.server.StageClientForRemoval(this); // Free Resources
+                        this.server.QueueClientForRemoval(this); // Free Resources
                         Log.DebugFormat("Client '{0}' performed Logout", clientLogin);
                         break;
                     case 8: // Get Rooms                                        
@@ -328,160 +328,8 @@
                     clientLogin,
                     Utils.TCPClient2IPAddress(this.Tcp),
                     ex);
-                this.server.StageClientForRemoval(this); // CLient send invalid data, so we'll "drop" him
+                this.server.QueueClientForRemoval(this); // CLient send invalid data, so we'll "drop" him
             }
-        }
-
-        /// <summary>
-        /// Sets up secure channel (this.Cryptor)
-        /// </summary>
-        /// <returns></returns>
-        public int SetUpSecureChannel()
-        {
-            try
-            {
-                var ecdh1 = new ECDHWrapper(AgreementLength);
-                var recCliPub = this.ReadWrappedMsg();
-                this.WriteWrappedMsg(ecdh1.PubData);
-                var agr = ecdh1.calcAgreement(recCliPub);
-
-                const int AESKeyLength = 32;
-                var aeskey = new byte[AESKeyLength];
-                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
-
-                this.Cryptor = new AESCSPImpl(aeskey, CryptoIv1);
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
-                this.Cryptor = null;
-                return 1;
-            }
-        }
-
-        private void ProcessConnectionInvalidCredentials()
-        {
-            this.tcpStream.WriteByte(2);
-            this.FreeTCPClient();
-            Log.DebugFormat(
-                    "Logon from IP '{0}' failed: Login '{1}'//Password not recognized",
-                    this.clientIPAddress,
-                    this.Credentials.Login);
-        }
-
-        private void ProcessUserRegistration()
-        {
-            // Registration without logon
-            this.ReadCredentials();
-            if (!this.dataContext.LoginExists(this.Credentials.Login))
-            {
-                this.dataContext.AddUser(this.Credentials.Login, this.Credentials.Pasword);
-                this.tcpStream.WriteByte(0);
-                Log.DebugFormat("Registration success: User '{0}' registered", this.Credentials.Login);
-            }
-            else
-            {
-                this.tcpStream.WriteByte(1);
-                Log.DebugFormat("Registration failed: User '{0}' already registered", this.Credentials.Login);
-            }
-
-            this.FreeTCPClient();
-        }
-        
-        /// <summary>
-        /// Init secure channel (this.Cryptor)
-        /// </summary>
-        /// <returns></returns>
-        private void InitSecureChannel()
-        {
-            try
-            {
-                var ecdh1 = new ECDHWrapper(AgreementLength);
-                var recCliPub = this.ReadWrappedMsg();
-                this.WriteWrappedMsg(ecdh1.PubData);
-                var agr = ecdh1.calcAgreement(recCliPub);
-
-                const int AESKeyLength = 32;
-                var aeskey = new byte[AESKeyLength];
-                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
-
-                this.Cryptor = new AESCSPImpl(aeskey, CryptoIv1);
-            }
-            catch (Exception ex)
-            {
-                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
-                this.Cryptor = null;
-                throw new SecureChannelInitFailedException(string.Empty, ex);
-            }
-        }
-        
-        private static int ReadInt32(NetworkStream stream)
-        {
-            var data = new byte[4];
-            stream.Read(data, 0, data.Length);
-            return BitConverter.ToInt32(data, 0);
-        }
-
-        private byte[] ReadWrappedMsg()
-        {
-            var stream = this.Tcp.GetStream();
-            int streamDataSize = ReadInt32(stream);
-            var streamData = new byte[streamDataSize];
-            stream.Read(streamData, 0, streamDataSize);
-            return streamData;
-        }
-
-        private byte[] ReadWrappedEncMsg()
-        {
-            var stream = this.tcpStream;
-            int streamDataSize = ReadInt32(stream);
-            var streamData = new byte[streamDataSize];
-            stream.Read(streamData, 0, streamDataSize);
-            return this.Cryptor.Decrypt(streamData);
-        }
-
-        private void WriteWrappedMsg(byte[] bytes)
-        {
-            var data = new byte[4 + bytes.Length];
-            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
-            bytes.CopyTo(data, 4);
-            this.tcpStream.Write(data, 0, data.Length);
-        }
-
-        private void WriteWrappedEncMsg(byte[] plain)
-        {
-            var bytes = this.Cryptor.Encrypt(plain);
-            var data = new byte[4 + bytes.Length];
-            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
-            bytes.CopyTo(data, 4);
-            this.tcpStream.Write(data, 0, data.Length);
-        }
-
-        public byte ReadByte()
-        {
-            var res = this.Tcp.GetStream().ReadByte();
-            if (res >= 0)
-            {
-                return (byte)res;
-            }
-            else
-            {
-                // res == -1 --> end of stream
-                throw new EndOfStreamException();
-            }
-        }
-
-        private void SendByte(byte value)
-        {
-            this.Tcp.GetStream().WriteByte(value);
-        }
-
-        public void ReadCredentials()
-        {
-            var bytes = this.ReadWrappedEncMsg();
-            var creds = Credentials.Parse(bytes, 1);
-            this.Credentials = creds;
         }
 
         public void FreeTCPClient()
@@ -514,61 +362,14 @@
                 {
                     return true;
                 }
-                else
-                {
-                    // Received unexpected data
-                    return false;
-                }
+                
+                // Received unexpected data
+                return false;
             }
             catch (IOException)
             {
                 return false;
             }
-            
-        }
-
-        /// <summary>
-        /// Check if client [application] is original, 
-        /// i.e. if it has valid private key
-        /// </summary> 
-        /// <returns>0 if ok, 1 if wrong</returns>
-        private void ValidateClientApplication()
-        {
-            try
-            {
-                var stream = this.tcpStream;
-
-                // Check if client is legit
-                var send = MyRandoms.GenerateSecureRandomBytes(100);
-                ChatServer.WriteWrappedMsg(stream, send);
-                var rec = ChatServer.ReadWrappedMsg(stream);
-
-                // Program.LogEvent(HexRep.ToString(rec));
-                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
-                if (!clientLegit)
-                {
-                    throw new ClientProgramInvalidException("Chat client program was not authenticated");
-                }
-            }
-            catch (ClientProgramInvalidException ex)
-            {
-                Log.DebugFormat("Error while authentificating: {0}",  ex);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Log.DebugFormat("Error while authentificating: {0}", ex);
-                throw new ClientProgramInvalidException(string.Empty, ex);
-            }
-        }
-
-        private void ProveItself()
-        {
-            // Clients want to know if server is legit
-            var rec = ChatServer.ReadWrappedMsg(this.tcpStream);
-            var send = Crypto.Utils.ServerSigner.signHash(rec);
-            ChatServer.WriteWrappedMsg(this.tcpStream, send);
-            this.CurrentStatus = Status.Verified;
         }
 
         private static void ParseChatMsg(byte[] bytes, out string source, out string dest, out string message)
@@ -633,6 +434,170 @@
             }
 
             return data;
+        }
+
+        private static int ReadInt32(NetworkStream stream)
+        {
+            var data = new byte[4];
+            stream.Read(data, 0, data.Length);
+            return BitConverter.ToInt32(data, 0);
+        }
+
+        private void ProcessConnectionInvalidCredentials()
+        {
+            this.tcpStream.WriteByte(2);
+            this.FreeTCPClient();
+            Log.DebugFormat(
+                    "Logon from IP '{0}' failed: Login '{1}'//Password not recognized",
+                    this.clientIPAddress,
+                    this.Credentials.Login);
+        }
+
+        private void ProcessUserRegistration()
+        {
+            // Registration without logon
+            this.ReadCredentials();
+            if (!this.dataContext.LoginExists(this.Credentials.Login))
+            {
+                this.dataContext.AddUser(this.Credentials.Login, this.Credentials.Pasword);
+                this.tcpStream.WriteByte(0);
+                Log.DebugFormat("Registration success: User '{0}' registered", this.Credentials.Login);
+            }
+            else
+            {
+                this.tcpStream.WriteByte(1);
+                Log.DebugFormat("Registration failed: User '{0}' already registered", this.Credentials.Login);
+            }
+
+            this.FreeTCPClient();
+        }
+        
+        /// <summary>
+        /// Init secure channel (this.Cryptor)
+        /// </summary>
+        /// <returns></returns>
+        private void InitSecureChannel()
+        {
+            try
+            {
+                var ecdh1 = new ECDHWrapper(AgreementLength);
+                var recCliPub = this.ReadWrappedMsg();
+                this.WriteWrappedMsg(ecdh1.PubData);
+                var agr = ecdh1.calcAgreement(recCliPub);
+
+                const int AESKeyLength = 32;
+                var aeskey = new byte[AESKeyLength];
+                Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
+
+                this.Cryptor = new AESCSPImpl(aeskey, CryptoIv1);
+            }
+            catch (Exception ex)
+            {
+                Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
+                this.Cryptor = null;
+                throw new SecureChannelInitFailedException(string.Empty, ex);
+            }
+        }
+        
+        private byte[] ReadWrappedMsg()
+        {
+            var stream = this.Tcp.GetStream();
+            int streamDataSize = ReadInt32(stream);
+            var streamData = new byte[streamDataSize];
+            stream.Read(streamData, 0, streamDataSize);
+            return streamData;
+        }
+
+        private byte[] ReadWrappedEncMsg()
+        {
+            var stream = this.tcpStream;
+            int streamDataSize = ReadInt32(stream);
+            var streamData = new byte[streamDataSize];
+            stream.Read(streamData, 0, streamDataSize);
+            return this.Cryptor.Decrypt(streamData);
+        }
+
+        private void WriteWrappedMsg(byte[] bytes)
+        {
+            var data = new byte[4 + bytes.Length];
+            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
+            bytes.CopyTo(data, 4);
+            this.tcpStream.Write(data, 0, data.Length);
+        }
+
+        private void WriteWrappedEncMsg(byte[] plain)
+        {
+            var bytes = this.Cryptor.Encrypt(plain);
+            var data = new byte[4 + bytes.Length];
+            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
+            bytes.CopyTo(data, 4);
+            this.tcpStream.Write(data, 0, data.Length);
+        }
+
+        private byte ReadByte()
+        {
+            var res = this.Tcp.GetStream().ReadByte();
+            if (res >= 0)
+            {
+                return (byte)res;
+            }
+            
+            // res == -1 --> end of stream
+            throw new EndOfStreamException();
+        }
+
+        private void SendByte(byte value)
+        {
+            this.Tcp.GetStream().WriteByte(value);
+        }
+
+        private void ReadCredentials()
+        {
+            var bytes = this.ReadWrappedEncMsg();
+            var creds = Credentials.Parse(bytes, 1);
+            this.Credentials = creds;
+        }
+
+        /// <summary>
+        /// Check if client [application] is original, 
+        /// i.e. if it has valid private key
+        /// </summary> 
+        /// <returns>0 if ok, 1 if wrong</returns>
+        private void ValidateClientApplication()
+        {
+            try
+            {
+                // Check if client is legit
+                var send = MyRandoms.GenerateSecureRandomBytes(100);
+                this.WriteWrappedMsg(send);
+                var rec = this.ReadWrappedMsg();
+
+                // Program.LogEvent(HexRep.ToString(rec));
+                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
+                if (!clientLegit)
+                {
+                    throw new ClientProgramInvalidException("Chat client program was not authenticated");
+                }
+            }
+            catch (ClientProgramInvalidException ex)
+            {
+                Log.DebugFormat("Error while authentificating: {0}",  ex);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.DebugFormat("Error while authentificating: {0}", ex);
+                throw new ClientProgramInvalidException(string.Empty, ex);
+            }
+        }
+
+        private void ProveItself()
+        {
+            // Clients want to know if server is legit
+            var rec = this.ReadWrappedMsg();
+            var send = Crypto.Utils.ServerSigner.signHash(rec);
+            this.WriteWrappedMsg(send);
+            this.CurrentStatus = Status.Verified;
         }
 
         private bool DataAvailable()
