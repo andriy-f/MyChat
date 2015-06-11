@@ -8,7 +8,7 @@
 
     public partial class LogonForm : Form
     {
-        private ChatClient chatClient;
+        private readonly ChatClient chatClient;
 
         public LogonForm(ChatClient chatClient)
         {
@@ -19,8 +19,8 @@
             this.chatClient = chatClient;
 
             // TODO: remove after debug
-            this.tbLogin.Text = "user1";
-            this.tbPass.Text = "qwe`123";
+            this.tbLogin.Text = @"user1";
+            this.tbPass.Text = @"qwe`123";
 
             this.cbServer.Text = Properties.Settings.Default.DefServer;
             this.nudPort.Value = Convert.ToDecimal(Properties.Settings.Default.DefPort);
@@ -28,8 +28,8 @@
 
         private void bLogin_Click(object sender, EventArgs e)
         {
-            chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
-            if (this.performAuth() && chatClient.performAgreement())
+            this.chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
+            if (this.ValidateItselfAndServer() && chatClient.performAgreement())
             {
                 this.performLogon();
             }
@@ -54,7 +54,7 @@
             if (this.tbRegLogin.Text != "" && this.tbRegPass.Text != "" && this.tbRegPass.Text == this.tbRegConf.Text)
             {
                 chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbRegLogin.Text, this.tbRegPass.Text);
-                if (this.performAuth() && chatClient.performAgreement())
+                if (this.ValidateItselfAndServer() && chatClient.performAgreement())
                 {
                     
                     this.performReg();
@@ -68,29 +68,18 @@
             this.Close(); 
         }
 
-        private bool performAuth()
+        private bool ValidateItselfAndServer()
         {
-            int rs = chatClient.PerformAuth();
-            switch (rs)
+            try
             {
-                case 0:
-                    return true;
-                case 1:
-                    MessageBox.Show("Server is not valid");
-                    return false;
-                case 2:
-                    MessageBox.Show("Error while authentificating");
-                    return false;
-                case 3:
-                    MessageBox.Show("Invalid response from server");
-                    return false;
-                case 4:
-                    MessageBox.Show("Network Socket exception");
-                    return false;
-                default://Error
-                    MessageBox.Show("Logon error");
-                    return false;
-            }            
+                this.chatClient.ValidateItselfAndServer();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Invalid (untrusted) server");
+                return false;
+            }
         }
 
         private void performLogon()

@@ -9,6 +9,9 @@
 
     using global::MyChat.Client.Core.Logging;
 
+    using MyChat.Client.Core.Exceptions;
+    using MyChat.Common.Network;
+
     /// <summary>
     /// -- Queries to server: --
     /// type - in 1st byte
@@ -67,6 +70,8 @@
 
         private AESCSPImpl cryptor;
 
+        private IStreamWrapper messageFramer;
+
         ////static ECDSAWrapper seanceDsaClientSigner;//signs client's messages
         ////static ECDSAWrapper seanceDsaServerChecker;//checks servers messages
 
@@ -93,6 +98,7 @@
             this.client = new TcpClient(this.Server, this.portNum);
             this.stream = this.client.GetStream();
             this.stream.ReadTimeout = 7000;
+            this.messageFramer = new FramedProtocol(this.stream);
         }        
 
         public void StartListener()
@@ -186,37 +192,36 @@
             }
         }
 
-        #region Perform
-
         /// <summary>
-        /// Performs authentification
+        /// Authentification  TODO: use
         /// </summary>
-        /// <returns>0 if OK, 1 if wrong, 2 if exception</returns>
-        public int PerformAuth()
+        public void ValidateItselfAndServer()
         {
             try
             {
+                // Validate itself
                 // Server sends random data which client must sign
-                byte[] rec = ReadWrappedMsg(this.stream);
-                byte[] send = this.staticDsaClientSigner.signHash(rec);
-                WriteWrappedMsg(this.stream, send);
-                
-                // Now client checks that server is legit
-                // Client gen random data which server must sign
-                send = GenSecRandomBytes(100);
-                WriteWrappedMsg(this.stream, send);
-                rec = ReadWrappedMsg(this.stream);
-                if (this.staticDsaServerChecker.verifyHash(send, rec))
-                {
-                    return 0;
-                }
+                var serverChallenge = this.messageFramer.Receive();
+                var challengeAnswer = this.staticDsaClientSigner.signHash(serverChallenge);
+                this.messageFramer.Send(challengeAnswer);
 
-                return 1;
+                // Now client checks that server is valid
+                // Client gen random data which server must sign
+                var clientChallenge = GenSecRandomBytes(100);
+                this.messageFramer.Send(clientChallenge);
+                var serverChallengeAnswer = this.messageFramer.Receive();
+                if (!this.staticDsaServerChecker.verifyHash(clientChallenge, serverChallengeAnswer))
+                {
+                    throw new ServerUntrustedException("Invalid server");
+                }
+            }
+            catch (ServerUntrustedException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                Logger.Debug(String.Format("Error while authentificating: {0}{1}", Environment.NewLine, ex));
-                return 2;
+                throw new ServerUntrustedException("Invalid server", ex);
             }
         }
 
@@ -303,7 +308,7 @@
                     case 1://Already exist
                         Logger.Debug(String.Format("Registration failed: User '{0}' already registered", this.Login));
                         this.FreeClient();
-                        break;                    
+                        break;
                     default:
                         Logger.Debug("Registration failed: invalid server response");
                         return 3;
@@ -430,8 +435,6 @@
                 return resp == 0;
             }
         }
-
-        #endregion
 
         #region Parsing
 

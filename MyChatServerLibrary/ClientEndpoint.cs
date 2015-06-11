@@ -34,14 +34,14 @@
 
         private readonly NetworkStream tcpStream;
 
-        private readonly IPAddress clientIPAddress;
+        private readonly IPAddress clientIpAddress;
 
         /// <summary>
         /// Must be list of unique. TODO: convert type to roomParams
         /// </summary>
         private readonly List<string> rooms = new List<string>(3);
 
-        private IStreamWrapper messageFramer;
+        private readonly IStreamWrapper messageFramer;
 
         public ClientEndpoint(IServer server, IDataContext context, TcpClient client)
         {
@@ -50,7 +50,7 @@
             this.Tcp = client;
             this.tcpStream = client.GetStream();
             this.messageFramer = new FramedProtocol(this.tcpStream);
-            this.clientIPAddress = Utils.TCPClient2IPAddress(this.Tcp);
+            this.clientIpAddress = Utils.TCPClient2IPAddress(this.Tcp);
             this.tcpStream.ReadTimeout = 1000; // TODO: remove this from server
             this.CurrentStatus = Status.Uninitialized;
         }
@@ -93,7 +93,7 @@
         {
             try
             {
-                Log.DebugFormat("Connected from {0}", this.clientIPAddress);
+                Log.DebugFormat("Connected from {0}", this.clientIpAddress);
                 this.ValidateClientApplication();
                 this.ProveItself();
                 this.InitSecureChannel();
@@ -116,7 +116,7 @@
                                     this.FreeTCPClient();
                                     Log.DebugFormat(
                                             "Logon from IP '{0}' failed: User '{1}' already logged on",
-                                            this.clientIPAddress,
+                                            this.clientIpAddress,
                                             this.Credentials.Login);
                                 }
                                 else
@@ -135,7 +135,7 @@
                                 this.SendByte(0);
                                 Log.DebugFormat(
                                         "Logon from IP '{0}' success: User '{1}' from IP  logged on",
-                                        this.clientIPAddress,
+                                        this.clientIpAddress,
                                         this.Credentials.Login);
                             }
                         }
@@ -156,7 +156,7 @@
             }
             catch (Exception ex)
             {
-                Log.Error(new Exception(string.Format("Client application connected from {0}, but was invalid", this.clientIPAddress), ex).ToString);
+                Log.Error(new Exception(string.Format("Client application connected from {0}, but was invalid", this.clientIpAddress), ex).ToString);
                 this.FreeTCPClient();
 
                 // Ban IP ipAddress...
@@ -453,7 +453,7 @@
             this.FreeTCPClient();
             Log.DebugFormat(
                     "Logon from IP '{0}' failed: Login '{1}'//Password not recognized",
-                    this.clientIPAddress,
+                    this.clientIpAddress,
                     this.Credentials.Login);
         }
 
@@ -563,22 +563,19 @@
         }
 
         /// <summary>
-        /// Check if client [application] is original, 
+        /// Check if client application is valid, 
         /// i.e. if it has valid private key
         /// </summary> 
-        /// <returns>0 if ok, 1 if wrong</returns>
         private void ValidateClientApplication()
         {
             try
             {
-                // Check if client is legit
-                var send = MyRandoms.GenerateSecureRandomBytes(100);
-                this.WriteWrappedMsg(send);
-                var rec = this.ReadWrappedMsg();
-
-                // Program.LogEvent(HexRep.ToString(rec));
-                bool clientLegit = Crypto.Utils.ClientVerifier.verifyHash(send, rec);
-                if (!clientLegit)
+                // Validate client application
+                var challengeForClient = MyRandoms.GenerateSecureRandomBytes(100);
+                this.messageFramer.Send(challengeForClient);
+                var challengeAnswer = this.messageFramer.Receive();
+                bool clientIsValid = Crypto.Utils.ClientVerifier.verifyHash(challengeForClient, challengeAnswer);
+                if (!clientIsValid)
                 {
                     throw new ClientProgramInvalidException("Chat client program was not authenticated");
                 }

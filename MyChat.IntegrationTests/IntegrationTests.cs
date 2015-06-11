@@ -13,7 +13,7 @@
 
     using NUnit.Framework;
 
-    using ChatClient = MyChat.Client.Core.ChatClient;
+    using ChatClient = Client.Core.ChatClient;
 
     [TestFixture]
     public class IntegrationTests
@@ -39,8 +39,7 @@
             var chatClient = new ChatClient();
 
             chatClient.Init("localhost", this.ServerPort, Login, Pass);
-            var authResult = chatClient.PerformAuth();
-            Assert.AreEqual(0, authResult);
+            chatClient.ValidateItselfAndServer();
 
             var clientServerAgreementEstablished = chatClient.performAgreement();
             Assert.True(clientServerAgreementEstablished);
@@ -166,8 +165,7 @@
             var chatClient = new ChatClient();
 
             chatClient.Init("localhost", this.ServerPort, login, pass);
-            var authResult = chatClient.PerformAuth();
-            Assert.AreEqual(0, authResult);
+            chatClient.ValidateItselfAndServer();
 
             var clientServerAgreementEstablished = chatClient.performAgreement();
             Assert.True(clientServerAgreementEstablished);
