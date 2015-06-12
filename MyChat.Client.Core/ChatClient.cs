@@ -225,26 +225,25 @@
             }
         }
 
-        public bool performAgreement()
+        public void SetUpSecureChannel()
         {
             try
             {
-                ECDHWrapper ecdh1 = new ECDHWrapper(AgreementLength);
-                WriteWrappedMsg(this.stream, ecdh1.PubData);                
-                byte[] recSerPub = ReadWrappedMsg(this.stream);
-                byte[] agr = ecdh1.calcAgreement(recSerPub);
+                var ecdh1 = new ECDHWrapper(AgreementLength);
+                this.messageFramer.Send(ecdh1.PubData);
+                var serverPublicKey = this.messageFramer.Receive();
+                byte[] agreement = ecdh1.calcAgreement(serverPublicKey);
 
-                int aeskeylen=32;
-                byte[] aeskey=new byte[aeskeylen];
-                Array.Copy(agr, 0, aeskey, 0, aeskeylen);
+                const int AESKeyLength = 32;
+                byte[] aesKey = new byte[AESKeyLength];
+                Array.Copy(agreement, 0, aesKey, 0, AESKeyLength);
 
-                this.cryptor = new AESCSPImpl(aeskey, Iv1);                
-                return true;
+                this.cryptor = new AESCSPImpl(aesKey, Iv1);
             }
             catch (Exception ex)
             {
-                Logger.Debug(String.Format("Error while completing agreement: {0}{1}", Environment.NewLine, ex));
-                return false;
+                Logger.Debug(string.Format("Error while stting up secure channel: {0}{1}", Environment.NewLine, ex));
+                throw new ServerSendInvalidDataException(string.Empty, ex);
             }
         }
 

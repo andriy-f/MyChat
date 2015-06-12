@@ -3,9 +3,9 @@
 	using System;
 	using System.Runtime.Serialization;
 
-	class ServerUntrustedException: InvalidOperationException
+	public class ServerUntrustedException: InvalidOperationException
     {
-        public ServerUntrustedException() : base()
+        public ServerUntrustedException()
         {
         }
 

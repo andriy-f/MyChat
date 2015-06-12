@@ -96,7 +96,7 @@
                 Log.DebugFormat("Connected from {0}", this.clientIpAddress);
                 this.ValidateClientApplication();
                 this.ProveItself();
-                this.InitSecureChannel();
+                this.SetUpSecureChannel();
 
                 var type = this.ReadByte(); // TODO: refactor
                 switch (type)
@@ -480,7 +480,7 @@
         /// Init secure channel (this.Cryptor)
         /// </summary>
         /// <returns></returns>
-        private void InitSecureChannel()
+        private void SetUpSecureChannel()
         {
             try
             {

@@ -48,6 +48,7 @@
     <Compile Include="App_Packages\LibLog.4.2\LibLog.cs" />
     <Compile Include="ChatClient.cs" />
     <Compile Include="Exceptions.cs" />
+    <Compile Include="Exceptions\ServerSendInvalidDataException.cs" />
     <Compile Include="Exceptions\ServerUntrustedException.cs" />
     <Compile Include="HexRep.cs" />
     <Compile Include="ListenProcessor.cs" />

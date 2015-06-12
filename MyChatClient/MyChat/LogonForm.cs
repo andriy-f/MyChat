@@ -28,10 +28,17 @@
 
         private void bLogin_Click(object sender, EventArgs e)
         {
-            this.chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text, this.tbPass.Text);
-            if (this.ValidateItselfAndServer() && chatClient.performAgreement())
+            try
             {
+                this.chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbLogin.Text,
+                    this.tbPass.Text);
+                this.chatClient.ValidateItselfAndServer();
+                this.chatClient.SetUpSecureChannel();
                 this.performLogon();
+            }
+            catch (Exception)
+            {
+                MessageBox.Show(@"Error logging in");
             }
         }
 
@@ -51,35 +58,32 @@
 
         private void bRegister_Click(object sender, EventArgs e)
         {
-            if (this.tbRegLogin.Text != "" && this.tbRegPass.Text != "" && this.tbRegPass.Text == this.tbRegConf.Text)
+            if (this.tbRegLogin.Text != "" && this.tbRegPass.Text != "" &&
+                this.tbRegPass.Text == this.tbRegConf.Text)
             {
-                chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value), this.tbRegLogin.Text, this.tbRegPass.Text);
-                if (this.ValidateItselfAndServer() && chatClient.performAgreement())
+                try
                 {
-                    
+                    this.chatClient.Init(this.cbServer.Text, Convert.ToInt32(this.nudPort.Value),
+                        this.tbRegLogin.Text,
+                        this.tbRegPass.Text);
+                    this.chatClient.ValidateItselfAndServer();
+                    this.chatClient.SetUpSecureChannel();
                     this.performReg();
                 }
+                catch (Exception)
+                {
+                    MessageBox.Show(@"Error registering user");
+                }
             }
-            else MessageBox.Show("Invalid registration data");
+            else
+            {
+                MessageBox.Show("Invalid registration data");
+            }
         }
 
         private void bCancel_Click(object sender, EventArgs e)
         { 
             this.Close(); 
-        }
-
-        private bool ValidateItselfAndServer()
-        {
-            try
-            {
-                this.chatClient.ValidateItselfAndServer();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Invalid (untrusted) server");
-                return false;
-            }
         }
 
         private void performLogon()

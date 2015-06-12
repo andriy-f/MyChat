@@ -41,8 +41,7 @@
             chatClient.Init("localhost", this.ServerPort, Login, Pass);
             chatClient.ValidateItselfAndServer();
 
-            var clientServerAgreementEstablished = chatClient.performAgreement();
-            Assert.True(clientServerAgreementEstablished);
+            chatClient.SetUpSecureChannel();
 
             var logonResult = chatClient.performLogonDef();
             Assert.AreEqual(0, logonResult);
@@ -166,9 +165,7 @@
 
             chatClient.Init("localhost", this.ServerPort, login, pass);
             chatClient.ValidateItselfAndServer();
-
-            var clientServerAgreementEstablished = chatClient.performAgreement();
-            Assert.True(clientServerAgreementEstablished);
+            chatClient.SetUpSecureChannel();
 
             var logonResult = chatClient.performLogonDef();
             Assert.AreEqual(0, logonResult);
