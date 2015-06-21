@@ -12,6 +12,7 @@
     using Andriy.Security.Cryptography;
 
     using global::MyChat.Common.Logging;
+    using global::MyChat.Common.Models.Messages;
     using global::MyChat.Common.Network;
 
     /// <summary>
@@ -98,12 +99,17 @@
                 this.ProveItself();
                 this.SetUpSecureChannel();
 
-                var type = this.ReadByte(); // TODO: refactor
+                var encryptedData = this.messageFramer.Receive();
+                var decryptedData = this.Cryptor.Decrypt(encryptedData);
+                var serviceMessage = ServiceMessage.FromBytes(decryptedData);
+
+                var type = serviceMessage.MessageType;
                 switch (type)
                 {
-                    case 0:
+                    case MessageType.Logon:
                         // Logon attempt
-                        this.ReadCredentials();
+                        var logonCreads = LogonCredentials.FromBytes(serviceMessage.Data);
+                        this.Credentials = new Credentials { Login = logonCreads.Login, Pasword = logonCreads.Password };
                         if (this.dataContext.ValidateLoginPass(this.Credentials.Login, this.Credentials.Pasword))
                         {
                             if (this.server.IsLoggedIn(this.Credentials.Login))
@@ -145,7 +151,7 @@
                         }
 
                         break;
-                    case 1:
+                    case MessageType.RegisterNewUser:
                         this.ProcessUserRegistration();
                         break;
                     default:
@@ -460,7 +466,7 @@
         private void ProcessUserRegistration()
         {
             // Registration without logon
-            this.ReadCredentials();
+            throw new NotImplementedException(); //this.ReadCredentials();
             if (!this.dataContext.LoginExists(this.Credentials.Login))
             {
                 this.dataContext.AddUser(this.Credentials.Login, this.Credentials.Pasword);
@@ -553,13 +559,6 @@
         private void SendByte(byte value)
         {
             this.Tcp.GetStream().WriteByte(value);
-        }
-
-        private void ReadCredentials()
-        {
-            var bytes = this.ReadWrappedEncMsg();
-            var creds = Credentials.Parse(bytes, 1);
-            this.Credentials = creds;
         }
 
         /// <summary>

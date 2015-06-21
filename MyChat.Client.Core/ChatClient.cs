@@ -10,6 +10,7 @@
     using global::MyChat.Client.Core.Logging;
 
     using MyChat.Client.Core.Exceptions;
+    using MyChat.Common.Models.Messages;
     using MyChat.Common.Network;
 
     /// <summary>
@@ -247,25 +248,32 @@
             }
         }
 
-        public int performLogonDef()
+        public int LogOn()
         {
             try
-            {                
-                Byte[] data = ChatClient.formatLogonMsg(this.Login, this.password);
-                this.stream.WriteByte(0);//Identifies logon attempt
-                this.WriteWrappedEncMsg(this.stream, data);
-                int resp = this.stream.ReadByte();//Ans
+            {
+                ////var data = formatLogonMsg(this.Login, this.password);
+                ////this.stream.WriteByte(0); // Identifies logon attempt
+                var creds = new LogonCredentials { Login = this.Login, Password = this.password };
+                var serializedCreds = creds.ToBytes();
+                var serviceMessage = new ServiceMessage { MessageType = MessageType.Logon, Data = serializedCreds };
+                var encryptedServiceMessage = this.cryptor.Encrypt(serviceMessage.ToBytes());
+                this.messageFramer.Send(encryptedServiceMessage);
+                int resp = this.stream.ReadByte(); // Answer
                 switch (resp)
                 {
-                    case 0://Success
-                        Logger.Debug(String.Format("Logon success with login '{0}'", this.Login));                        
+                    case 0:
+                        // Success
+                        Logger.Debug(string.Format("Logon success with login '{0}'", this.Login));                        
                         break;
-                    case 1://Already logged on
-                        Logger.Debug(String.Format("Logon fail: User '{0}' already logged on", this.Login));
+                    case 1:
+                        // Already logged on
+                        Logger.Debug(string.Format("Logon fail: User '{0}' already logged on", this.Login));
                         this.FreeClient();
                         break;
-                    case 2://Invalid login/pass
-                        Logger.Debug(String.Format("Logon fail: Invalid login//pass"));
+                    case 2:
+                        // Invalid login/pass
+                        Logger.Debug("Logon fail: Invalid login//pass");
                         this.FreeClient();
                         break;
                 }
@@ -273,7 +281,7 @@
             }
             catch (ArgumentNullException ex)
             {
-                Logger.Error(ex.ToString);                
+                Logger.Error(ex.ToString);
                 return 3;
             }
             catch (SocketException ex)
@@ -291,7 +299,7 @@
         public int performRegDef(bool autologin)//return 3 - server 
         {
             try
-            {                
+            {
                 Byte[] data = ChatClient.formatLogonMsg(this.Login, this.password);
                 data[0] = autologin ? (byte)2 : (byte)1;//Registration header now
                 this.stream.WriteByte(data[0]);//Identifies Registration attempt

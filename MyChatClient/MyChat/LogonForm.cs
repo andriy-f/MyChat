@@ -88,7 +88,7 @@
 
         private void performLogon()
         {
-            int rs = chatClient.performLogonDef();
+            int rs = chatClient.LogOn();
             switch (rs)
             {
                 case 0://Success                    

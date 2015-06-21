@@ -43,7 +43,7 @@
 
             chatClient.SetUpSecureChannel();
 
-            var logonResult = chatClient.performLogonDef();
+            var logonResult = chatClient.LogOn();
             Assert.AreEqual(0, logonResult);
 
             chatClient.StartListener();
@@ -167,7 +167,7 @@
             chatClient.ValidateItselfAndServer();
             chatClient.SetUpSecureChannel();
 
-            var logonResult = chatClient.performLogonDef();
+            var logonResult = chatClient.LogOn();
             Assert.AreEqual(0, logonResult);
 
             chatClient.StartListener();

@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{B17C9414-5BCD-4B62-A1A6-CB30AB849585}</ProjectGuid>
+    <ProjectGuid>{433596E7-7E19-4400-B140-D7BD7CEDB079}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MyChat.Common</RootNamespace>
-    <AssemblyName>MyChat.Common</AssemblyName>
+    <RootNamespace>MyChat.Common.Tests</RootNamespace>
+    <AssemblyName>MyChat.Common.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
@@ -19,7 +19,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;LIBLOG_PUBLIC</DefineConstants>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -32,8 +32,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BouncyCastle.Crypto, Version=1.7.4137.9688, Culture=neutral, PublicKeyToken=a4292a325f69b123, processorArchitecture=MSIL">
-      <HintPath>..\packages\BouncyCastle.1.7.0\lib\Net40-Client\BouncyCastle.Crypto.dll</HintPath>
+    <Reference Include="nunit.framework, Version=2.6.4.14350, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
+      <HintPath>..\packages\NUnit.2.6.4\lib\nunit.framework.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -45,26 +45,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="App_Packages\LibLog.4.2\LibLog.cs" />
-    <Compile Include="Crypto\AESCSPImpl.cs" />
-    <Compile Include="Crypto\AESMngdImpl.cs" />
-    <Compile Include="Crypto\AesWrapper.cs" />
-    <Compile Include="Crypto\CryptoCmn.cs" />
-    <Compile Include="Crypto\ECDHWrapper.cs" />
-    <Compile Include="Crypto\ECDSAWrapper.cs" />
-    <Compile Include="Models\Messages\LogonCredentials.cs" />
-    <Compile Include="Models\Messages\ServiceMessage.cs" />
-    <Compile Include="Models\Messages\ChatMessage.cs" />
-    <Compile Include="Models\Messages\MessageType.cs" />
-    <Compile Include="Network\IStreamWrapper.cs" />
-    <Compile Include="Network\FramedProtocol.cs" />
-    <Compile Include="PacketProtocol.cs" />
+    <Compile Include="ModelsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\MyChat.Common\MyChat.Common.csproj">
+      <Project>{b17c9414-5bcd-4b62-a1a6-cb30ab849585}</Project>
+      <Name>MyChat.Common</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
