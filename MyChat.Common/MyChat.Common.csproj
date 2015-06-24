@@ -56,10 +56,12 @@
     <Compile Include="Models\Messages\ServiceMessage.cs" />
     <Compile Include="Models\Messages\ChatMessage.cs" />
     <Compile Include="Models\Messages\MessageType.cs" />
+    <Compile Include="Models\Messages\ServiceMessageResponse.cs" />
     <Compile Include="Network\IStreamWrapper.cs" />
     <Compile Include="Network\FramedProtocol.cs" />
     <Compile Include="PacketProtocol.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

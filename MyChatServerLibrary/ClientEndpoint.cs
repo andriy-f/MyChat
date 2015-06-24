@@ -413,7 +413,7 @@
                 return;
             }
             
-            // CHeck if user with same login is already logged in
+            // Check if user with same login is already logged in
             if (this.server.IsLoggedIn(credentials.Login))
             {
                 var existingClient = this.server.GetChatClient(credentials.Login);
