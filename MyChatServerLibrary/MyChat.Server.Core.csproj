@@ -51,7 +51,6 @@
     <Compile Include="ChatServer.cs" />
     <Compile Include="Consts.cs" />
     <Compile Include="ConvertUtils.cs" />
-    <Compile Include="Credentials.cs" />
     <Compile Include="Crypto\Utils.cs" />
     <Compile Include="DAL\DataContext.cs" />
     <Compile Include="DAL\IDataContext.cs" />

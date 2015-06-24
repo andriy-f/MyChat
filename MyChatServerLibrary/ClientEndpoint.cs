@@ -68,13 +68,7 @@
 
         public Status CurrentStatus { get; private set; }
 
-        public string Login
-        {
-            get
-            {
-                return this.Credentials.Login;
-            }
-        }
+        public string Login { get; private set; }
 
         public List<string> Rooms
         {
@@ -87,8 +81,6 @@
         public TcpClient Tcp { get; set; }
         
         public AESCSPImpl Cryptor { get; set; }
-
-        internal Credentials Credentials { get; private set; }
 
         public void ProcessPendingConnection()
         {
@@ -107,49 +99,7 @@
                 switch (type)
                 {
                     case MessageType.Logon:
-                        // Logon attempt
-                        var logonCreads = LogonCredentials.FromBytes(serviceMessage.Data);
-                        this.Credentials = new Credentials { Login = logonCreads.Login, Pasword = logonCreads.Password };
-                        if (this.dataContext.ValidateLoginPass(this.Credentials.Login, this.Credentials.Pasword))
-                        {
-                            if (this.server.IsLoggedIn(this.Credentials.Login))
-                            {
-                                var existingClient = this.server.GetChatClient(this.Credentials.Login);
-                                if (existingClient.PokeForAlive())
-                                {
-                                    // Client with login <login> still alive -> new login attempt invalid
-                                    this.SendByte(1);
-                                    this.FreeTCPClient();
-                                    Log.DebugFormat(
-                                            "Logon from IP '{0}' failed: User '{1}' already logged on",
-                                            this.clientIpAddress,
-                                            this.Credentials.Login);
-                                }
-                                else
-                                {
-                                    // Old client app which used current login is unresponsive -> dispose of it and add new
-                                    this.server.RemoveClient(this.Credentials.Login);
-                                    Log.DebugFormat(
-                                            "Old client app which used login '{0}' is unresponsive -> dispose of it and add new",
-                                            this.Credentials.Login);
-                                    this.server.AddLoggedInUser(this.Credentials.Login, this);
-                                }
-                            }
-                            else
-                            {
-                                this.server.AddLoggedInUser(this.Credentials.Login, this);
-                                this.SendByte(0);
-                                Log.DebugFormat(
-                                        "Logon from IP '{0}' success: User '{1}' from IP  logged on",
-                                        this.clientIpAddress,
-                                        this.Credentials.Login);
-                            }
-                        }
-                        else
-                        {
-                            this.ProcessConnectionInvalidCredentials();
-                        }
-
+                        this.ProcessLogon(serviceMessage); // TODO: move to ProcessCurrentConnection (to allow relogin)
                         break;
                     case MessageType.RegisterNewUser:
                         this.ProcessUserRegistration();
@@ -177,7 +127,7 @@
                 return;
             }
 
-            string clientLogin = this.Credentials.Login;
+            string clientLogin = this.Login;
             if (!this.DataAvailable())
             {
                 // Just skip
@@ -453,6 +403,53 @@
             return BitConverter.ToInt32(data, 0);
         }
 
+        private void ProcessLogon(ServiceMessage serviceMessage)
+        {
+            // Logon attempt
+            var credentials = LogonCredentials.FromBytes(serviceMessage.Data);
+            if (!this.dataContext.ValidateLoginPass(credentials.Login, credentials.Password))
+            {
+                this.ProcessConnectionInvalidCredentials();
+                return;
+            }
+            
+            // CHeck if user with same login is already logged in
+            if (this.server.IsLoggedIn(credentials.Login))
+            {
+                var existingClient = this.server.GetChatClient(credentials.Login);
+                if (existingClient.PokeForAlive())
+                {
+                    // Client with login <login> still alive -> new login attempt invalid
+                    this.SendByte(1);
+                    this.FreeTCPClient();
+                    Log.DebugFormat(
+                            "Logon from IP '{0}' failed: User '{1}' already logged on",
+                            this.clientIpAddress,
+                            credentials.Login);
+                }
+                else
+                {
+                    // Old client app which used current login is unresponsive -> dispose of it and add new
+                    this.server.RemoveClient(credentials.Login);
+                    Log.DebugFormat(
+                            "Old client app which used login '{0}' is unresponsive -> dispose of it and add new",
+                            credentials.Login);
+                    this.server.AddLoggedInUser(credentials.Login, this);
+                }
+            }
+            else
+            {
+                this.server.AddLoggedInUser(credentials.Login, this);
+                this.SendByte(0);
+                Log.DebugFormat(
+                        "Logon from IP '{0}' success: User '{1}' from IP  logged on",
+                        this.clientIpAddress,
+                        credentials.Login);
+            }
+
+            this.Login = credentials.Login;
+        }
+
         private void ProcessConnectionInvalidCredentials()
         {
             this.tcpStream.WriteByte(2);
@@ -460,26 +457,26 @@
             Log.DebugFormat(
                     "Logon from IP '{0}' failed: Login '{1}'//Password not recognized",
                     this.clientIpAddress,
-                    this.Credentials.Login);
+                    this.Login);
         }
 
         private void ProcessUserRegistration()
         {
-            // Registration without logon
-            throw new NotImplementedException(); //this.ReadCredentials();
-            if (!this.dataContext.LoginExists(this.Credentials.Login))
-            {
-                this.dataContext.AddUser(this.Credentials.Login, this.Credentials.Pasword);
-                this.tcpStream.WriteByte(0);
-                Log.DebugFormat("Registration success: User '{0}' registered", this.Credentials.Login);
-            }
-            else
-            {
-                this.tcpStream.WriteByte(1);
-                Log.DebugFormat("Registration failed: User '{0}' already registered", this.Credentials.Login);
-            }
+            // Registration (does not require logon)
+            throw new NotImplementedException(); // this.ReadCredentials();
+            ////if (!this.dataContext.LoginExists(this.Credentials.Login))
+            ////{
+            ////    this.dataContext.AddUser(this.Credentials.Login, this.Credentials.Pasword);
+            ////    this.tcpStream.WriteByte(0);
+            ////    Log.DebugFormat("Registration success: User '{0}' registered", this.Credentials.Login);
+            ////}
+            ////else
+            ////{
+            ////    this.tcpStream.WriteByte(1);
+            ////    Log.DebugFormat("Registration failed: User '{0}' already registered", this.Credentials.Login);
+            ////}
 
-            this.FreeTCPClient();
+            ////this.FreeTCPClient();
         }
         
         /// <summary>
