@@ -194,7 +194,7 @@
         }
 
         /// <summary>
-        /// Authentification  TODO: use
+        /// Authentication of client application
         /// </summary>
         public void ValidateItselfAndServer()
         {

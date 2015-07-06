@@ -44,6 +44,8 @@
 
         private readonly IStreamWrapper messageFramer;
 
+        private readonly IStreamWrapper cryptoStreamWrapper;
+
         public ClientEndpoint(IServer server, IDataContext context, TcpClient client)
         {
             this.server = server;
@@ -396,13 +398,6 @@
             return data;
         }
 
-        private static int ReadInt32(NetworkStream stream)
-        {
-            var data = new byte[4];
-            stream.Read(data, 0, data.Length);
-            return BitConverter.ToInt32(data, 0);
-        }
-
         private void ProcessLogon(ServiceMessage serviceMessage)
         {
             // Logon attempt
@@ -488,8 +483,8 @@
             try
             {
                 var ecdh1 = new ECDHWrapper(AgreementLength);
-                var recCliPub = this.ReadWrappedMsg();
-                this.WriteWrappedMsg(ecdh1.PubData);
+                var recCliPub = this.messageFramer.Receive();
+                this.messageFramer.Send(ecdh1.PubData);
                 var agr = ecdh1.calcAgreement(recCliPub);
 
                 const int AESKeyLength = 32;
@@ -508,39 +503,27 @@
         
         private byte[] ReadWrappedMsg()
         {
-            var stream = this.Tcp.GetStream();
-            int streamDataSize = ReadInt32(stream);
-            var streamData = new byte[streamDataSize];
-            stream.Read(streamData, 0, streamDataSize);
-            return streamData;
+            return this.messageFramer.Receive();
         }
 
         private byte[] ReadWrappedEncMsg()
         {
-            var stream = this.tcpStream;
-            int streamDataSize = ReadInt32(stream);
-            var streamData = new byte[streamDataSize];
-            stream.Read(streamData, 0, streamDataSize);
-            return this.Cryptor.Decrypt(streamData);
+            var encData = this.messageFramer.Receive();
+            return this.Cryptor.Decrypt(encData);
         }
 
         private void WriteWrappedMsg(byte[] bytes)
         {
-            var data = new byte[4 + bytes.Length];
-            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
-            bytes.CopyTo(data, 4);
-            this.tcpStream.Write(data, 0, data.Length);
+            this.messageFramer.Send(bytes);
         }
 
         private void WriteWrappedEncMsg(byte[] plain)
         {
-            var bytes = this.Cryptor.Encrypt(plain);
-            var data = new byte[4 + bytes.Length];
-            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
-            bytes.CopyTo(data, 4);
-            this.tcpStream.Write(data, 0, data.Length);
+            var encryptedMessage = this.Cryptor.Encrypt(plain);
+            this.messageFramer.Send(encryptedMessage);
         }
 
+        [Obsolete]
         private byte ReadByte()
         {
             var res = this.Tcp.GetStream().ReadByte();
@@ -553,6 +536,7 @@
             throw new EndOfStreamException();
         }
 
+        [Obsolete]
         private void SendByte(byte value)
         {
             this.Tcp.GetStream().WriteByte(value);

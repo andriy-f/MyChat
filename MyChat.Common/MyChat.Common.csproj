@@ -57,6 +57,7 @@
     <Compile Include="Models\Messages\ChatMessage.cs" />
     <Compile Include="Models\Messages\MessageType.cs" />
     <Compile Include="Models\Messages\ServiceMessageResponse.cs" />
+    <Compile Include="Network\CryptoProtocol.cs" />
     <Compile Include="Network\IStreamWrapper.cs" />
     <Compile Include="Network\FramedProtocol.cs" />
     <Compile Include="PacketProtocol.cs" />
