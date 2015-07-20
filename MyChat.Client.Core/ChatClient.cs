@@ -10,6 +10,7 @@
     using global::MyChat.Client.Core.Logging;
 
     using MyChat.Client.Core.Exceptions;
+    using MyChat.Common.Crypto;
     using MyChat.Common.Models.Messages;
     using MyChat.Common.Network;
 

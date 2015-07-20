@@ -1,10 +1,10 @@
-﻿namespace Andriy.Security.Cryptography
+﻿namespace MyChat.Common.Crypto
 {
     using System;
     using System.IO;
     using System.Security.Cryptography;
 
-    public class AESCSPImpl
+    public class AESCSPImpl : IDataCryptor
     {
         #region Fields
 

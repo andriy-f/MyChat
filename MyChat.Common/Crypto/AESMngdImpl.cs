@@ -1,49 +1,76 @@
-﻿using System;
-using System.IO;
-using System.Security.Cryptography;
-
-namespace My.Cryptography
+﻿namespace MyChat.Common.Crypto
 {
-    public class AESMngdImpl
+    using System;
+    using System.IO;
+    using System.Security.Cryptography;
+
+    public class AESMngdImpl : IDataCryptor, IDisposable
     {
-        #region Fields
+        private AesManaged _aes;
 
-        private readonly AesManaged _aes;
-        private readonly ICryptoTransform _encryptor;
-        private readonly ICryptoTransform _decryptor;
+        private ICryptoTransform _encryptor;
 
-        #endregion
+        private ICryptoTransform _decryptor;
 
         #region Constructors, Destructors
 
         public AESMngdImpl()
         {
-            _aes = new AesManaged();
-            _encryptor = _aes.CreateEncryptor();
-            _decryptor = _aes.CreateDecryptor();
+            this._aes = new AesManaged();
+            this._encryptor = this._aes.CreateEncryptor();
+            this._decryptor = this._aes.CreateDecryptor();
         }
 
         public AESMngdImpl(byte[] newKey, byte[] newIV)
         {
             if (newKey == null || newKey.Length <= 0)
+            {
                 throw new ArgumentNullException("newKey");
-            if (newIV == null || newIV.Length <= 0)
-                throw new ArgumentNullException("newIV");
+            }
 
-            _aes = new AesManaged { Key = newKey, IV = newIV };
-            _encryptor = _aes.CreateEncryptor();
-            _decryptor = _aes.CreateDecryptor();
+            if (newIV == null || newIV.Length <= 0)
+            {
+                throw new ArgumentNullException("newIV");
+            }
+
+            this._aes = new AesManaged { Key = newKey, IV = newIV };
+            this._encryptor = this._aes.CreateEncryptor();
+            this._decryptor = this._aes.CreateDecryptor();
         }
 
         public void Clear()
         {
-            if (_encryptor != null)
-                _encryptor.Dispose();
-            if (_decryptor != null)
-                _decryptor.Dispose();
+            this.Dispose();
+        }
 
-            if (_aes != null)
-                _aes.Clear();
+        public void Dispose()
+        {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool freeManagedObjects)
+        {
+            if (freeManagedObjects)
+            {
+                if (this._encryptor != null)
+                {
+                    this._encryptor.Dispose();
+                    this._encryptor = null;
+                }
+
+                if (this._decryptor != null)
+                {
+                    this._decryptor.Dispose();
+                    this._decryptor = null;
+                }
+
+                if (this._aes != null)
+                {
+                    this._aes.Dispose();
+                    this._aes = null;
+                }
+            }
         }
 
         #endregion
@@ -53,41 +80,21 @@ namespace My.Cryptography
         public byte[] Encrypt(byte[] byteArray)
         {
             if (byteArray == null || byteArray.Length <= 0)
-                throw new ArgumentNullException("byteArray");
-
-            byte[] res = null;
-
-            using (MemoryStream msEncrypt = new MemoryStream()) //--> Encrypted data
             {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, _encryptor,
-                                                                 CryptoStreamMode.Write)) //<-- plain data
-                {
-                    csEncrypt.Write(byteArray, 0, byteArray.Length);
-                }
-
-                res = msEncrypt.ToArray();
+                throw new ArgumentNullException("byteArray");
             }
-            return res;
+
+            return this._encryptor.TransformFinalBlock(byteArray, 0, byteArray.Length);
         }
 
         public byte[] Decrypt(byte[] cipherText)
         {
             if (cipherText == null || cipherText.Length <= 0)
-                throw new ArgumentNullException("cipherText");
-
-            byte[] res = null;
-
-            using (MemoryStream msDecrypt = new MemoryStream()) //--> Decrypted data
             {
-                using (CryptoStream cs = new CryptoStream(msDecrypt, _decryptor,
-                                                          CryptoStreamMode.Write)) //<-- Encrypted data
-                {
-                    cs.Write(cipherText, 0, cipherText.Length);
-                }
-                res = msDecrypt.ToArray();
+                throw new ArgumentNullException("cipherText");
             }
 
-            return res;
+            return this._decryptor.TransformFinalBlock(cipherText, 0, cipherText.Length);
         }
 
         #endregion
@@ -102,7 +109,7 @@ namespace My.Cryptography
             byte[] res = null;
             using (MemoryStream msEncrypt = new MemoryStream()) //--> encrypted data
             {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, _encryptor,
+                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, this._encryptor,
                                                                  CryptoStreamMode.Write)) //<--plain data
                 {
                     using (StreamWriter swEncrypt = new StreamWriter(csEncrypt)) //<-- plain data(string)  
@@ -123,7 +130,7 @@ namespace My.Cryptography
             string res = null;
             using (MemoryStream msDecrypt = new MemoryStream(cipherText)) //<-- encrypted data
             {
-                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, _decryptor,
+                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, this._decryptor,
                                                                  CryptoStreamMode.Read)) //--> decrypted data
                 {
                     using (StreamReader srDecrypt = new StreamReader(csDecrypt)) //--> decrypted data (string)
@@ -144,7 +151,7 @@ namespace My.Cryptography
             if (byteArray == null || byteArray.Length <= 0)
                 throw new ArgumentNullException("byteArray");
 
-            using (CryptoStream csEncrypt = new CryptoStream(sEncrypted, _encryptor,
+            using (CryptoStream csEncrypt = new CryptoStream(sEncrypted, this._encryptor,
                                                              CryptoStreamMode.Write))
             //<-- plain data
             {
@@ -161,7 +168,7 @@ namespace My.Cryptography
 
             byte[] res = null;
 
-            using (CryptoStream csDecrypt = new CryptoStream(sCrypted, _decryptor,
+            using (CryptoStream csDecrypt = new CryptoStream(sCrypted, this._decryptor,
                                                              CryptoStreamMode.Read))
             {
                 long len = csDecrypt.Length;
@@ -179,7 +186,7 @@ namespace My.Cryptography
 
             byte[] res = null;
 
-            using (CryptoStream csDecrypt = new CryptoStream(sCrypted, _decryptor,
+            using (CryptoStream csDecrypt = new CryptoStream(sCrypted, this._decryptor,
                                                              CryptoStreamMode.Read))
             {
                 res = new byte[length];

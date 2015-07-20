@@ -52,6 +52,7 @@
     <Compile Include="Crypto\CryptoCmn.cs" />
     <Compile Include="Crypto\ECDHWrapper.cs" />
     <Compile Include="Crypto\ECDSAWrapper.cs" />
+    <Compile Include="Crypto\IDataCryptor.cs" />
     <Compile Include="Models\Messages\LogonCredentials.cs" />
     <Compile Include="Models\Messages\ServiceMessage.cs" />
     <Compile Include="Models\Messages\ChatMessage.cs" />

@@ -11,9 +11,12 @@
     using Andriy.MyChat.Server.Exceptions;
     using Andriy.Security.Cryptography;
 
+    using global::MyChat.Common.Crypto;
     using global::MyChat.Common.Logging;
     using global::MyChat.Common.Models.Messages;
     using global::MyChat.Common.Network;
+
+    using My.Cryptography;
 
     /// <summary>
     /// client == null -> client incative
@@ -82,7 +85,7 @@
 
         public TcpClient Tcp { get; set; }
         
-        public AESCSPImpl Cryptor { get; set; }
+        public IDataCryptor Cryptor { get; set; }
 
         public void ProcessPendingConnection()
         {
@@ -491,7 +494,7 @@
                 var aeskey = new byte[AESKeyLength];
                 Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
 
-                this.Cryptor = new AESCSPImpl(aeskey, CryptoIv1);
+                this.Cryptor = new AESMngdImpl(aeskey, CryptoIv1); // TODO : regenarate IV for each message
             }
             catch (Exception ex)
             {
