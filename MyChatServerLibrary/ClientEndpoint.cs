@@ -16,8 +16,6 @@
     using global::MyChat.Common.Models.Messages;
     using global::MyChat.Common.Network;
 
-    using My.Cryptography;
-
     /// <summary>
     /// client == null -> client incative
     /// 
