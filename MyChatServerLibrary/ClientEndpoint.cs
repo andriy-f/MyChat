@@ -45,7 +45,7 @@
 
         private readonly IStreamWrapper messageFramer;
 
-        private readonly IStreamWrapper cryptoStreamWrapper;
+        private IStreamWrapper cryptoWrapper;
 
         public ClientEndpoint(IServer server, IDataContext context, TcpClient client)
         {
@@ -83,6 +83,7 @@
 
         public TcpClient Tcp { get; set; }
         
+        [Obsolete("Should switch to cryptoWrapper")]
         public IDataCryptor Cryptor { get; set; }
 
         public void ProcessPendingConnection()
@@ -94,8 +95,7 @@
                 this.ProveItself();
                 this.SetUpSecureChannel();
 
-                var encryptedData = this.messageFramer.Receive();
-                var decryptedData = this.Cryptor.Decrypt(encryptedData);
+                var decryptedData = this.cryptoWrapper.Receive();
                 var serviceMessage = ServiceMessage.FromBytes(decryptedData);
 
                 var type = serviceMessage.MessageType;
@@ -416,7 +416,8 @@
                 if (existingClient.PokeForAlive())
                 {
                     // Client with login <login> still alive -> new login attempt invalid
-                    this.SendByte(1);
+                    var resp = new ServiceMessageResponse { Message = "This login is already used"};
+                    this.cryptoWrapper.Send(resp.ToBytes());
                     this.FreeTCPClient();
                     Log.DebugFormat(
                             "Logon from IP '{0}' failed: User '{1}' already logged on",
@@ -436,8 +437,7 @@
             else
             {
                 this.server.AddLoggedInUser(credentials.Login, this);
-                //this.
-                this.SendByte(0);
+                this.cryptoWrapper.Send(ServiceMessageResponse.Success.ToBytes());
                 Log.DebugFormat(
                         "Logon from IP '{0}' success: User '{1}' from IP  logged on",
                         this.clientIpAddress,
@@ -449,7 +449,8 @@
 
         private void ProcessConnectionInvalidCredentials()
         {
-            this.tcpStream.WriteByte(2);
+            var resp = new ServiceMessageResponse { Message = "Invalid user credentials!" };
+            this.cryptoWrapper.Send(resp.ToBytes());
             this.FreeTCPClient();
             Log.DebugFormat(
                     "Logon from IP '{0}' failed: Login '{1}'//Password not recognized",
@@ -494,6 +495,7 @@
                 Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
 
                 this.Cryptor = new AesManagedCryptor(aeskey, CryptoIv1); // TODO : regenarate IV for each message
+                this.cryptoWrapper = new CryptoProtocol(this.messageFramer, aeskey, CryptoIv1);
             }
             catch (Exception ex)
             {

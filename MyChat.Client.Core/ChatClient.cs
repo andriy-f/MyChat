@@ -70,9 +70,12 @@
 
         private ECDSAWrapper staticDsaServerChecker;//check with staticServerPubKey 
 
+        [Obsolete("Use cryptoWrapper instead")]
         private IDataCryptor cryptor;
 
         private IStreamWrapper messageFramer;
+
+        private IStreamWrapper cryptoWrapper;
 
         ////static ECDSAWrapper seanceDsaClientSigner;//signs client's messages
         ////static ECDSAWrapper seanceDsaServerChecker;//checks servers messages
@@ -241,6 +244,7 @@
                 Array.Copy(agreement, 0, aesKey, 0, AESKeyLength);
 
                 this.cryptor = new AesManagedCryptor(aesKey, Iv1);
+                this.cryptoWrapper = new CryptoProtocol(this.messageFramer, aesKey, Iv1);
             }
             catch (Exception ex)
             {
@@ -258,27 +262,20 @@
                 var creds = new LogonCredentials { Login = this.Login, Password = this.password };
                 var serializedCreds = creds.ToBytes();
                 var serviceMessage = new ServiceMessage { MessageType = MessageType.Logon, Data = serializedCreds };
-                var encryptedServiceMessage = this.cryptor.Encrypt(serviceMessage.ToBytes());
-                this.messageFramer.Send(encryptedServiceMessage);
-                int resp = this.stream.ReadByte(); // Answer
-                switch (resp)
+                this.cryptoWrapper.Send(serviceMessage.ToBytes());
+                var respData = this.cryptoWrapper.Receive();
+                var smr = ServiceMessageResponse.FromBytes(respData);
+                if (smr.IsSuccess)
                 {
-                    case 0:
-                        // Success
-                        Logger.Debug(string.Format("Logon success with login '{0}'", this.Login));                        
-                        break;
-                    case 1:
-                        // Already logged on
-                        Logger.Debug(string.Format("Logon fail: User '{0}' already logged on", this.Login));
-                        this.FreeClient();
-                        break;
-                    case 2:
-                        // Invalid login/pass
-                        Logger.Debug("Logon fail: Invalid login//pass");
-                        this.FreeClient();
-                        break;
+                    Logger.Debug(string.Format("Logon succeeded for user '{0}'", this.Login));
+                    return 0;
                 }
-                return resp;
+                else
+                {
+                    Logger.Debug(string.Format("Logon failed for user '{0}'. Reason: '{1}'", this.Login, smr.Message));
+                    this.FreeClient();
+                    return 1;
+                }
             }
             catch (ArgumentNullException ex)
             {

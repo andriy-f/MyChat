@@ -4,9 +4,18 @@
 
     public class ServiceMessageResponse
     {
+        ////public Guid messageId TODO
+
         public bool IsSuccess { get; set; }
 
         public string Message { get; set; }
+
+        public static ServiceMessageResponse Success { get; }
+
+        static ServiceMessageResponse()
+        {
+            Success = new ServiceMessageResponse { IsSuccess = true };
+        }
 
         public static ServiceMessageResponse FromBytes(byte[] input)
         {
