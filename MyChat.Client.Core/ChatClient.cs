@@ -70,7 +70,7 @@
 
         private ECDSAWrapper staticDsaServerChecker;//check with staticServerPubKey 
 
-        private AESCSPImpl cryptor;
+        private IDataCryptor cryptor;
 
         private IStreamWrapper messageFramer;
 
@@ -240,7 +240,7 @@
                 byte[] aesKey = new byte[AESKeyLength];
                 Array.Copy(agreement, 0, aesKey, 0, AESKeyLength);
 
-                this.cryptor = new AESCSPImpl(aesKey, Iv1);
+                this.cryptor = new AesManagedCryptor(aesKey, Iv1);
             }
             catch (Exception ex)
             {

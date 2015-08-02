@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Andriy.MyChat.Server
+﻿namespace Andriy.MyChat.Server
 {
-    using Andriy.Security.Cryptography;
+    using System.Text;
 
     using global::MyChat.Common.Crypto;
 
@@ -19,27 +13,33 @@ namespace Andriy.MyChat.Server
         {
             get
             {
-                var aes1 = new AESCSPImpl(SettKey, SettIv);
+                var aes1 = new AesManagedCryptor(SettKey, SettIv);
                 try
                 {
-                    return aes1.DecryptStr(ConvertUtils.ToBytes(Properties.Settings.Default.String1));
+                    var encryptedBytes = ConvertUtils.ToBytes(Properties.Settings.Default.String1);
+                    var decryptedBytes = aes1.Decrypt(encryptedBytes);
+                    var decryptedString = Encoding.UTF8.GetString(decryptedBytes);
+                    return decryptedString;
                 }
                 finally
                 {
-                    aes1.Clear();
+                    // Cleanup
                 }
             }
 
             set
             {
-                var aes1 = new AESCSPImpl(SettKey, SettIv);
+                var aes1 = new AesManagedCryptor(SettKey, SettIv);
                 try
                 {
-                    Properties.Settings.Default.String1 = ConvertUtils.ToString(aes1.EncryptStr(value));
+                    var plainBytes = Encoding.UTF8.GetBytes(value);
+                    var encryptedBytes = aes1.Encrypt(plainBytes);
+                    var stringRepresentation = ConvertUtils.ToString(encryptedBytes);
+                    Properties.Settings.Default.String1 = stringRepresentation;
                 }
                 finally
                 {
-                    aes1.Clear();
+                    // Cleanup
                 }
             }
         }

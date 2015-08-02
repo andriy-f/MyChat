@@ -438,6 +438,7 @@
             else
             {
                 this.server.AddLoggedInUser(credentials.Login, this);
+                //this.
                 this.SendByte(0);
                 Log.DebugFormat(
                         "Logon from IP '{0}' success: User '{1}' from IP  logged on",
@@ -494,7 +495,7 @@
                 var aeskey = new byte[AESKeyLength];
                 Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
 
-                this.Cryptor = new AESMngdImpl(aeskey, CryptoIv1); // TODO : regenarate IV for each message
+                this.Cryptor = new AesManagedCryptor(aeskey, CryptoIv1); // TODO : regenarate IV for each message
             }
             catch (Exception ex)
             {

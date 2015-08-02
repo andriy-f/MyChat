@@ -47,6 +47,7 @@
   <ItemGroup>
     <Compile Include="App_Packages\LibLog.4.2\LibLog.cs" />
     <Compile Include="Crypto\AESCSPImpl.cs" />
+    <Compile Include="Crypto\AesManagedCryptor.cs" />
     <Compile Include="Crypto\AESMngdImpl.cs" />
     <Compile Include="Crypto\AesWrapper.cs" />
     <Compile Include="Crypto\CryptoCmn.cs" />
