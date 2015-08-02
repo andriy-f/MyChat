@@ -11,7 +11,6 @@
     using Andriy.MyChat.Server.Exceptions;
     using Andriy.Security.Cryptography;
 
-    using global::MyChat.Common.Crypto;
     using global::MyChat.Common.Logging;
     using global::MyChat.Common.Models.Messages;
     using global::MyChat.Common.Network;
@@ -83,9 +82,6 @@
 
         public TcpClient Tcp { get; set; }
         
-        [Obsolete("Should switch to cryptoWrapper")]
-        public IDataCryptor Cryptor { get; set; }
-
         public void ProcessPendingConnection()
         {
             try
@@ -494,13 +490,12 @@
                 var aeskey = new byte[AESKeyLength];
                 Array.Copy(agr, 0, aeskey, 0, AESKeyLength);
 
-                this.Cryptor = new AesManagedCryptor(aeskey, CryptoIv1); // TODO : regenarate IV for each message
                 this.cryptoWrapper = new CryptoProtocol(this.messageFramer, aeskey, CryptoIv1);
             }
             catch (Exception ex)
             {
                 Log.DebugFormat("Error while completing agreement: {0}{1}", Environment.NewLine, ex);
-                this.Cryptor = null;
+                this.cryptoWrapper = null;
                 throw new SecureChannelInitFailedException(string.Empty, ex);
             }
         }
@@ -512,8 +507,7 @@
 
         private byte[] ReadWrappedEncMsg()
         {
-            var encData = this.messageFramer.Receive();
-            return this.Cryptor.Decrypt(encData);
+            return this.cryptoWrapper.Receive();
         }
 
         private void WriteWrappedMsg(byte[] bytes)
@@ -523,8 +517,7 @@
 
         private void WriteWrappedEncMsg(byte[] plain)
         {
-            var encryptedMessage = this.Cryptor.Encrypt(plain);
-            this.messageFramer.Send(encryptedMessage);
+            this.cryptoWrapper.Send(plain);
         }
 
         [Obsolete]

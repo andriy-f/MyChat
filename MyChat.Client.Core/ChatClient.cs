@@ -70,9 +70,6 @@
 
         private ECDSAWrapper staticDsaServerChecker;//check with staticServerPubKey 
 
-        [Obsolete("Use cryptoWrapper instead")]
-        private IDataCryptor cryptor;
-
         private IStreamWrapper messageFramer;
 
         private IStreamWrapper cryptoWrapper;
@@ -146,25 +143,25 @@
                         string source, dest, message;
                         switch (type)
                         {
-                            case 1:                                
+                            case 1:
                                 this.MessageProcessor.process("Server", "<unknown>", "Previous message was not deivered");
                                 break;
                             case 3://Incoming Message for room                                    
-                                streamData = this.ReadWrappedEncMsg(this.stream);//streamData[0] must == 3
+                                streamData = this.ReadWrappedEncMsg();//streamData[0] must == 3
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
                                 Logger.Info(string.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
                                 this.MessageProcessor.processForRoom(source, dest, message);
                                 break;
                             case 4://Incoming Message for user
-                                streamData = this.ReadWrappedEncMsg(this.stream);//streamData[0] must == 4
+                                streamData = this.ReadWrappedEncMsg();//streamData[0] must == 4
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
                                 Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
                                 this.MessageProcessor.process(source, dest, message);
                                 break;
                             case 5://Incoming Message for All
-                                streamData = this.ReadWrappedEncMsg(this.stream);//streamData[0] must == 5
+                                streamData = this.ReadWrappedEncMsg();//streamData[0] must == 5
                                 parseChatMsg(streamData, out source, out dest, out message);
                                 //displaying Message
                                 Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
@@ -243,7 +240,6 @@
                 byte[] aesKey = new byte[AESKeyLength];
                 Array.Copy(agreement, 0, aesKey, 0, AESKeyLength);
 
-                this.cryptor = new AesManagedCryptor(aesKey, Iv1);
                 this.cryptoWrapper = new CryptoProtocol(this.messageFramer, aesKey, Iv1);
             }
             catch (Exception ex)
@@ -301,7 +297,7 @@
                 Byte[] data = ChatClient.formatLogonMsg(this.Login, this.password);
                 data[0] = autologin ? (byte)2 : (byte)1;//Registration header now
                 this.stream.WriteByte(data[0]);//Identifies Registration attempt
-                this.WriteWrappedEncMsg(this.stream, data);
+                this.WriteWrappedEncMsg(data);
                 int resp = this.stream.ReadByte();//Ans
                 switch (resp)
                 {
@@ -345,7 +341,7 @@
                     Logger.Debug("queue");
                     Byte[] data = this.formatChatMsg(type, dest, msg);
                     this.stream.WriteByte(type);
-                    this.WriteWrappedEncMsg(this.stream, data);
+                    this.WriteWrappedEncMsg(data);
                 });
         }
 
@@ -359,12 +355,12 @@
         {
             this.listenQueue.Enqueue(new ListenProcessor(11, ac));
             this.stream.WriteByte(11);//Requesting room users
-            WriteWrappedMsg(this.stream, System.Text.Encoding.UTF8.GetBytes(room));
+            this.WriteWrappedMsg(System.Text.Encoding.UTF8.GetBytes(room));
         }
 
         public string[] getRooms()
         {
-            Byte[] bytes = ReadWrappedMsg(this.stream);
+            Byte[] bytes = this.ReadWrappedMsg();
             if (bytes[0] == 0)
                 return parseGetRoomsMsgAns(bytes);
             else
@@ -373,7 +369,7 @@
 
         public string[] getRoomUsers()
         {
-            Byte[] bytes = ReadWrappedMsg(this.stream);
+            var bytes = this.ReadWrappedMsg();
             if (bytes[0] == 0)
                 return ParseGetRoomUsers(bytes);
             else
@@ -387,7 +383,7 @@
             int resp = -2;
             this.mut.WaitOne();
             this.stream.WriteByte(6);//Acnowledge server about action
-            this.WriteWrappedEncMsg(this.stream, bytes);
+            this.WriteWrappedEncMsg(bytes);
             resp = this.stream.ReadByte();
             this.mut.ReleaseMutex();
             switch (resp)
@@ -434,7 +430,7 @@
                 int resp = -2;
                 this.mut.WaitOne();
                 this.stream.WriteByte(9);
-                WriteWrappedMsg(this.stream, data);
+                this.WriteWrappedMsg(data);
                 resp = this.stream.ReadByte();
                 this.mut.ReleaseMutex();
                 return resp == 0;
@@ -603,19 +599,9 @@
 
         #region ReadWrite wrapUnwrap
 
-        static int ReadInt32(NetworkStream stream)
+        private byte[] ReadWrappedMsg()
         {
-            Byte[] data = new Byte[4];
-            stream.Read(data, 0, data.Length);
-            return BitConverter.ToInt32(data, 0);
-        }
-
-        static Byte[] ReadWrappedMsg(NetworkStream stream)
-        {
-            int streamDataSize = ReadInt32(stream);            
-            Byte[] streamData = new Byte[streamDataSize];
-            stream.Read(streamData, 0, streamDataSize);
-            return streamData;
+            return this.messageFramer.Receive();
         }
 
         ////static int readWrappedMsg2(NetworkStream stream, ref byte[] read)
@@ -629,29 +615,19 @@
         ////    else throw new ArgumentException("Too small to read incoming data", "read");
         ////}
 
-        private Byte[] ReadWrappedEncMsg(NetworkStream stream)
+        private byte[] ReadWrappedEncMsg()
         {
-            int streamDataSize = ReadInt32(stream);
-            Byte[] streamData = new Byte[streamDataSize];
-            stream.Read(streamData, 0, streamDataSize);
-            return this.cryptor.Decrypt(streamData);            
+            return this.cryptoWrapper.Receive();
         }
 
-        static void WriteWrappedMsg(NetworkStream stream, Byte[] bytes)
+        private void WriteWrappedMsg(byte[] bytes)
         {
-            Byte[] data = new Byte[4 + bytes.Length];
-            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
-            bytes.CopyTo(data, 4);
-            stream.Write(data, 0, data.Length);
+            this.messageFramer.Send(bytes);
         }
 
-        private void WriteWrappedEncMsg(NetworkStream stream, Byte[] plain)
+        private void WriteWrappedEncMsg(byte[] plain)
         {
-            byte[] bytes = this.cryptor.Encrypt(plain);
-            Byte[] data = new Byte[4 + bytes.Length];
-            BitConverter.GetBytes(bytes.Length).CopyTo(data, 0);
-            bytes.CopyTo(data, 4);
-            stream.Write(data, 0, data.Length);
+            this.cryptoWrapper.Send(plain);
         }
 
         #endregion
