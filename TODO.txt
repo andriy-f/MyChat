@@ -1,0 +1,2 @@
+﻿Server:
+  1. Make some kind of scheduler, several threads to avoid blocking single thread on single client

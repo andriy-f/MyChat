@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyChat.Server.WinFormsApp", "MyChatServer\MyChatServer\MyChat.Server.WinFormsApp.csproj", "{FF5A1224-AE47-4FCF-97D7-C2C7E13DEB26}"
 EndProject
@@ -29,6 +29,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A7F90C9D-A021-4C03-8C06-E2744319A763}"
 	ProjectSection(SolutionItems) = preProject
 		Settings.StyleCop = Settings.StyleCop
+		TODO.txt = TODO.txt
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyChat.Common.Tests", "MyChat.Common.Tests\MyChat.Common.Tests.csproj", "{433596E7-7E19-4400-B140-D7BD7CEDB079}"
