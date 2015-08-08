@@ -10,7 +10,7 @@
 
         public string Message { get; set; }
 
-        public static ServiceMessageResponse Success { get; }
+        public static ServiceMessageResponse Success { get; private set; }
 
         static ServiceMessageResponse()
         {

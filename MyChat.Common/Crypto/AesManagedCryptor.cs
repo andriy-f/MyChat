@@ -12,9 +12,9 @@
         public AesManagedCryptor(byte[] newKey, byte[] newIv)
         {
             if (newKey == null || newKey.Length <= 0)
-                throw new ArgumentNullException(nameof(newKey));
+                throw new ArgumentNullException("newKey");
             if (newIv == null || newIv.Length <= 0)
-                throw new ArgumentNullException(nameof(newIv));
+                throw new ArgumentNullException("newIv");
 
             var aes = new AesManaged { Key = newKey, IV = newIv };
             this.encryptor = aes.CreateEncryptor();
