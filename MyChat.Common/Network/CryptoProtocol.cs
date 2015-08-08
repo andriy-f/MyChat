@@ -11,7 +11,6 @@
 
         private readonly ICryptoTransform decryptor;
 
-
         public CryptoProtocol(IStreamWrapper under, byte[] key, byte[] iv)
         {
             if (under == null)
