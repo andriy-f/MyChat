@@ -159,6 +159,162 @@
             server.Stop();
         }
 
+        [Test]
+        public void OneServerOneClientProtocolErrorTest()
+        {
+            const string Login = "testUser1";
+            const string Pass = "testPass1";
+            var serverDataContext = Mock.Of<IDataContext>(ctx => ctx.LoginExists(Login) &&
+                ctx.ValidateLoginPass(Login, Pass));
+
+            var server = new ChatServer(serverDataContext, this.ServerPort);
+
+            var chatClient = new ChatClient();
+
+            chatClient.Init("localhost", this.ServerPort, Login, Pass);
+            chatClient.ValidateItselfAndServer();
+
+            chatClient.SetUpSecureChannel();
+
+            var logonResult = chatClient.LogOnInvalidMessage1();
+            Assert.AreEqual(0, logonResult);
+
+            chatClient.StartListener();
+
+            var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
+            Assert.True(joinRoomResult);
+
+            var messageReceivedBack = false;
+            var syncRef = new object();
+            chatClient.MessageProcessor.addProcessor(
+                "r1",
+                (source, dest, msg) =>
+                {
+                    if (msg == "testMsg")
+                    {
+                        lock (syncRef)
+                        {
+                            messageReceivedBack = true;
+                        }
+                    }
+                });
+
+            chatClient.queueChatMsg(3, "r1", "testMsg");
+
+            Func<bool> messageReceivedBackRead = () =>
+            {
+                lock (syncRef)
+                {
+                    return messageReceivedBack;
+                }
+            };
+
+            var waiter = Task.Run(
+                () =>
+                {
+                    while (!messageReceivedBackRead())
+                    {
+                        Thread.Sleep(100);
+                    }
+                });
+            Task.WaitAll(new[] { waiter }, 5000);
+            Assert.True(messageReceivedBackRead());
+
+            chatClient.StopListener();
+            server.Stop();
+        }
+
+        [Test]
+        public void OneServerOneClientTooBigMessageTest()
+        {
+            const string Login = "testUser1";
+            const string Pass = "testPass1";
+            var serverDataContext = Mock.Of<IDataContext>(ctx => ctx.LoginExists(Login) &&
+                ctx.ValidateLoginPass(Login, Pass));
+
+            var server = new ChatServer(serverDataContext, this.ServerPort);
+
+            var chatClient = new ChatClient();
+
+            chatClient.Init("localhost", this.ServerPort, Login, Pass);
+            chatClient.ValidateItselfAndServer();
+
+            chatClient.SetUpSecureChannel();
+
+            var logonResult = chatClient.LogOnInvalidMessage1();
+            Assert.AreEqual(0, logonResult);
+
+            chatClient.StartListener();
+
+            var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
+            Assert.True(joinRoomResult);
+
+            var messageReceivedBack = false;
+            var syncRef = new object();
+            chatClient.MessageProcessor.addProcessor(
+                "r1",
+                (source, dest, msg) =>
+                {
+                    if (msg == "testMsg")
+                    {
+                        lock (syncRef)
+                        {
+                            messageReceivedBack = true;
+                        }
+                    }
+                });
+
+            chatClient.queueChatMsg(3, "r1", "testMsg");
+
+            Func<bool> messageReceivedBackRead = () =>
+            {
+                lock (syncRef)
+                {
+                    return messageReceivedBack;
+                }
+            };
+
+            var waiter = Task.Run(
+                () =>
+                {
+                    while (!messageReceivedBackRead())
+                    {
+                        Thread.Sleep(100);
+                    }
+                });
+            Task.WaitAll(new[] { waiter }, 5000);
+            Assert.True(messageReceivedBackRead());
+
+            chatClient.StopListener();
+            server.Stop();
+        }
+
+        [Test]
+        public void OneServerOneClientTooBigMessage2Test()
+        {
+            const string Login = "testUser1";
+            const string Pass = "testPass1";
+            var serverDataContext = Mock.Of<IDataContext>(ctx => ctx.LoginExists(Login) &&
+                ctx.ValidateLoginPass(Login, Pass));
+
+            var server = new ChatServer(serverDataContext, this.ServerPort);
+
+            var chatClient = new ChatClient();
+
+            chatClient.Init("localhost", this.ServerPort, Login, Pass);
+            chatClient.ValidateItselfAndServer();
+
+            chatClient.SetUpSecureChannel();
+
+            var logonResult = chatClient.LogOnInvalidMessage1();
+            Assert.AreEqual(0, logonResult);
+
+            chatClient.StartListener();
+            
+            chatClient.StopListener();
+            server.Stop();
+        }
+
         private ChatClient SetUpChatClient(string login, string pass)
         {
             var chatClient = new ChatClient();

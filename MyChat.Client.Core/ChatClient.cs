@@ -290,6 +290,52 @@
             }
         }
 
+        public int LogOnInvalidMessage1()
+        {
+            try
+            {
+                var creds = new LogonCredentials { Login = this.Login, Password = this.password };
+                var serializedCreds = creds.ToBytes();
+                var serviceMessage = new ServiceMessage { MessageType = MessageType.Logon, Data = serializedCreds };
+
+                var serviceMessageSerialized = serviceMessage.ToBytes();
+
+                // Craft corrupted message
+                var data = new byte[4 + 10];
+                BitConverter.GetBytes(12).CopyTo(data, 0);
+                this.stream.Write(data, 0, data.Length); // Send corrupted message
+
+                var respData = this.cryptoWrapper.Receive();
+                var smr = ServiceMessageResponse.FromBytes(respData);
+                if (smr.IsSuccess)
+                {
+                    Logger.Debug(string.Format("Logon succeeded for user '{0}'", this.Login));
+                    return 0;
+                }
+                else
+                {
+                    Logger.Debug(string.Format("Logon failed for user '{0}'. Reason: '{1}'", this.Login, smr.Message));
+                    this.FreeClient();
+                    return 1;
+                }
+            }
+            catch (ArgumentNullException ex)
+            {
+                Logger.Error(ex.ToString);
+                return 3;
+            }
+            catch (SocketException ex)
+            {
+                Logger.Error(ex.ToString);
+                return 4;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.ToString);
+                return 5;
+            }
+        }
+
         public int performRegDef(bool autologin)//return 3 - server 
         {
             try
