@@ -253,8 +253,6 @@
         {
             try
             {
-                ////var data = formatLogonMsg(this.Login, this.password);
-                ////this.stream.WriteByte(0); // Identifies logon attempt
                 var creds = new LogonCredentials { Login = this.Login, Password = this.password };
                 var serializedCreds = creds.ToBytes();
                 var serviceMessage = new ServiceMessage { MessageType = MessageType.Logon, Data = serializedCreds };
