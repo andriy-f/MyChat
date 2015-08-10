@@ -46,5 +46,22 @@
 
             return res;
         }
+
+        public static byte[] Serialize(Request msg)
+        {
+            var idBytes = msg.Id.ToByteArray(); // 16 elements
+            var dataLen = msg.Data != null ? msg.Data.Length : 0;
+            var dataLenBytes = BitConverter.GetBytes(dataLen); // 4 bytes
+            var res = new byte[16 + 4 + dataLen]; // GUID + bool + data length (4) + data
+
+            Buffer.BlockCopy(idBytes, 0, res, 0, 16);
+            Buffer.BlockCopy(dataLenBytes, 0, res, 16, 4);
+            if (dataLen > 0)
+            {
+                Buffer.BlockCopy(msg.Data, 0, res, 20, dataLen);
+            }
+
+            return res;
+        }
     }
 }

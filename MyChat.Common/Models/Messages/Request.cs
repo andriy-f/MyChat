@@ -2,7 +2,7 @@
 {
     using System;
 
-    public class Request
+    public class Request : AbstractMessage
     {
         public Guid Id { get; set; }
 

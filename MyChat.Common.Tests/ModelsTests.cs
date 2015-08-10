@@ -129,5 +129,35 @@ namespace MyChat.Common.Tests
             Assert.AreEqual(original.IsSuccess, reconstructedMessage.IsSuccess);
             Assert.AreEqual(original.Data, reconstructedMessage.Data);
         }
+
+        [Test]
+        public void RequestMessageConsistencyTest()
+        {
+            var original = new Request()
+            {
+                Id = Guid.NewGuid(),
+                Data = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }
+            };
+
+            // Serializing
+            var serializer = new MessageSerializingVisitor();
+            original.Accept(serializer);
+            var serializedData = serializer.Result;
+            Assert.NotNull(serializedData);
+            Assert.True(serializedData.Length > 0);
+
+            // Deserializing
+            var deserializer = new MessageDeserializingVisitor()
+            {
+                DataBuffer = serializedData,
+                DataLength = serializedData.Length,
+                BufferOffset = 0
+            };
+            var reconstructedMessage = new Request();
+            reconstructedMessage.Accept(deserializer);
+
+            Assert.AreEqual(original.Id, reconstructedMessage.Id);
+            Assert.AreEqual(original.Data, reconstructedMessage.Data);
+        }
     }
 }

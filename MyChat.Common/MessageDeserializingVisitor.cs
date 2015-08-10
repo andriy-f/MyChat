@@ -87,5 +87,40 @@
                 throw new SerializationException("Exception during deserializing Response", ex);
             }
         }
+
+        public void Deserialize(Request msg)
+        {
+            if (this.DataBuffer == null || this.DataBuffer.Length == 0)
+            {
+                throw new InvalidOperationException("DataBuffer is not set or empty");
+            }
+
+            if (this.DataBuffer.Length < this.BufferOffset + this.DataLength)
+            {
+                throw new InvalidOperationException("DataBuffer is too short for specified offset and data length");
+            }
+
+            try
+            {
+                var guidBytes = new byte[16];
+                Buffer.BlockCopy(this.DataBuffer, this.BufferOffset, guidBytes, 0, 16);
+                msg.Id = new Guid(guidBytes);
+
+                var dataLen = BitConverter.ToInt32(this.DataBuffer, this.BufferOffset + 16);
+                if (dataLen > 0)
+                {
+                    msg.Data = new byte[dataLen];
+                    Buffer.BlockCopy(this.DataBuffer, this.BufferOffset + 20, msg.Data, 0, dataLen);
+                }
+                else
+                {
+                    msg.Data = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SerializationException("Exception during deserializing Response", ex);
+            }
+        }
     }
 }
