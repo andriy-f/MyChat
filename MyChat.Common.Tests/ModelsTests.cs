@@ -3,6 +3,8 @@ using NUnit.Framework;
 
 namespace MyChat.Common.Tests
 {
+    using System;
+
     [TestFixture]
     public class ModelsTests
     {
@@ -62,6 +64,70 @@ namespace MyChat.Common.Tests
 
             Assert.AreEqual(original.SuperMessageType, reconstructedMessage.SuperMessageType);
             Assert.AreEqual(original.DataBuffer, reconstructedMessage.DataBuffer);
+        }
+
+        [Test]
+        public void ResponseMessageConsistencyTest1()
+        {
+            var original = new Response()
+            {
+                Id = Guid.NewGuid(),
+                IsSuccess = false,
+                Data = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }
+            };
+
+            // Serializing
+            var serializer = new MessageSerializingVisitor();
+            original.Accept(serializer);
+            var serializedData = serializer.Result;
+            Assert.NotNull(serializedData);
+            Assert.True(serializedData.Length > 0);
+
+            // Deserializing
+            var deserializer = new MessageDeserializingVisitor()
+            {
+                DataBuffer = serializedData,
+                DataLength = serializedData.Length,
+                BufferOffset = 0
+            };
+            var reconstructedMessage = new Response();
+            reconstructedMessage.Accept(deserializer);
+
+            Assert.AreEqual(original.Id, reconstructedMessage.Id);
+            Assert.AreEqual(original.IsSuccess, reconstructedMessage.IsSuccess);
+            Assert.AreEqual(original.Data, reconstructedMessage.Data);
+        }
+
+        [Test]
+        public void ResponseMessageConsistencyTest2()
+        {
+            var original = new Response()
+            {
+                Id = Guid.NewGuid(),
+                IsSuccess = true,
+                Data = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }
+            };
+
+            // Serializing
+            var serializer = new MessageSerializingVisitor();
+            original.Accept(serializer);
+            var serializedData = serializer.Result;
+            Assert.NotNull(serializedData);
+            Assert.True(serializedData.Length > 0);
+
+            // Deserializing
+            var deserializer = new MessageDeserializingVisitor()
+            {
+                DataBuffer = serializedData,
+                DataLength = serializedData.Length,
+                BufferOffset = 0
+            };
+            var reconstructedMessage = new Response();
+            reconstructedMessage.Accept(deserializer);
+
+            Assert.AreEqual(original.Id, reconstructedMessage.Id);
+            Assert.AreEqual(original.IsSuccess, reconstructedMessage.IsSuccess);
+            Assert.AreEqual(original.Data, reconstructedMessage.Data);
         }
     }
 }

@@ -2,7 +2,7 @@
 {
     using System;
 
-    public class Response
+    public class Response : AbstractMessage
     {
         public Guid Id { get; set; }
 
