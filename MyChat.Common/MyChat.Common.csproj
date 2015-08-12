@@ -52,8 +52,10 @@
     <Compile Include="Crypto\ECDHWrapper.cs" />
     <Compile Include="Crypto\ECDSAWrapper.cs" />
     <Compile Include="Crypto\IDataCryptor.cs" />
+    <Compile Include="CustomBinaryFormatter.cs" />
     <Compile Include="IMessageVisitor.cs" />
     <Compile Include="MessageDeserializingVisitor.cs" />
+    <Compile Include="ModelComparer.cs" />
     <Compile Include="Models\ChatRoomDto.cs" />
     <Compile Include="Models\Messages\LogonCredentials.cs" />
     <Compile Include="Models\Messages\Request.cs" />

@@ -4,6 +4,9 @@ using NUnit.Framework;
 namespace MyChat.Common.Tests
 {
     using System;
+    using System.Linq;
+
+    using MyChat.Common.Models;
 
     [TestFixture]
     public class ModelsTests
@@ -158,6 +161,25 @@ namespace MyChat.Common.Tests
 
             Assert.AreEqual(original.Id, reconstructedMessage.Id);
             Assert.AreEqual(original.Data, reconstructedMessage.Data);
+        }
+
+        [Test]
+        public void ChatRoomInfosSerializationTest()
+        {
+            var original = new[]
+                               {
+                                   new ChatRoomInfo { IsPasswordProtected = true, Name = "r1" },
+                                   new ChatRoomInfo { IsPasswordProtected = false, Name = "r2" }
+                               };
+
+            // Serializing
+            var serializedData = CustomBinaryFormatter.Serialize(original);
+            Assert.NotNull(serializedData);
+            Assert.True(serializedData.Length > 0);
+
+            // Deserializing
+            var reconstructed = CustomBinaryFormatter.Deserialize(serializedData, 0, serializedData.Length);
+            CollectionAssert.AreEqual(original, reconstructed, new ChatRoomInfoComparer());
         }
     }
 }
