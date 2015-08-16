@@ -142,6 +142,22 @@
                 switch (superMessage.SuperMessageType)
                 {
                     case SuperServiceMessage.SuperServiceMessageType.Simple:
+                        var simpleMessage = (SimpleMessage)CustomBinaryFormatter.Deserialize(superMessage.DataBuffer, 0, superMessage.DataBuffer.Length);
+                        switch (simpleMessage.MessageType)
+                        {
+                                case SimpleMessage.SimpleMessageTypeEnum.TextMessage:
+                                var textMessage = (TextMessage)CustomBinaryFormatter.Deserialize(simpleMessage.Data, 0, simpleMessage.Data.Length);
+                                switch (textMessage.DestinationType)
+                                {
+                                    case TextMessage.DestinationTypeEnum.Room:
+                                        // TODO
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new InvalidOperationException("Unknown simple message type or invalid message");
+                        }
+                        break;
                     case SuperServiceMessage.SuperServiceMessageType.Request:
                         // GetRooms, for example
                         var request = (Request)CustomBinaryFormatter.Deserialize(superMessage.DataBuffer, 0, superMessage.DataBuffer.Length);

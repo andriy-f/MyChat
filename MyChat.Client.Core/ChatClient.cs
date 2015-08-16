@@ -403,6 +403,7 @@
             }
         }
 
+        [Obsolete]
         public void queueChatMsg(byte type, string dest, string msg)
         {
             this.sendQueue.Enqueue(() =>
@@ -414,20 +415,21 @@
                 });
         }
 
-        public void queueChatMsg(TextMessage message)
+        public void Send(TextMessage message)
         {
-            this.sendQueue.Enqueue(
-                () =>
-                    {
-                        var serializedMessage = CustomBinaryFormatter.Serialize(message);
+            var serializedTextMessage = CustomBinaryFormatter.Serialize(message);
+            var simpleMessage = new SimpleMessage()
+                                     {
+                                         MessageType = SimpleMessage.SimpleMessageTypeEnum.TextMessage,
+                                         Data = serializedTextMessage
+                                     };
+            var superMessage = new SuperServiceMessage()
+            {
+                SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Simple,
+                DataBuffer = CustomBinaryFormatter.Serialize(simpleMessage)
+            };
 
-                        var superMessage = new SuperServiceMessage()
-                                               {
-                                                   SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Simple
-                                               };
-
-                        this.cryptoWrapper.Send(CustomBinaryFormatter.Serialize(superMessage));
-                    });
+            this.cryptoWrapper.Send(CustomBinaryFormatter.Serialize(superMessage));
         }
 
         /// <summary>

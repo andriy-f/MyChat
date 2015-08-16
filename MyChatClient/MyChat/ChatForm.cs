@@ -7,6 +7,7 @@ namespace Andriy.MyChat.Client
     using System.Windows.Forms;
 
     using global::MyChat.Client.Core;
+    using global::MyChat.Common.Models.Messages;
 
     public partial class ChatForm : Form
     {
@@ -41,12 +42,23 @@ namespace Andriy.MyChat.Client
 
         private void bSend_Click(object sender, EventArgs e)
         {
+            TextMessage msg;
             if (this.cbDest.Text == "<Room>")
-                chatClient.queueChatMsg(3, this.room, this.rtbMsg.Text);
-            else if(this.cbDest.Text == "<All>")
-                chatClient.queueChatMsg(5, "All", this.rtbMsg.Text);
+            {
+                msg = new TextMessage() { DestinationType = TextMessage.DestinationTypeEnum.Room, Destination = this.room, Text = this.rtbMsg.Text };
+                
+            }
+            else if (this.cbDest.Text == "<All>")
+            {
+                msg = new TextMessage() { DestinationType = TextMessage.DestinationTypeEnum.All, Text = this.rtbMsg.Text };
+            }
             else
-                chatClient.queueChatMsg(4, this.cbDest.Text, this.rtbMsg.Text);
+            {
+                // User
+                msg = new TextMessage() { DestinationType = TextMessage.DestinationTypeEnum.User, Text = this.rtbMsg.Text, Destination = this.cbDest.Text};
+            }
+
+            this.chatClient.Send(msg);
             this.rtbMsg.Clear();
         }
 

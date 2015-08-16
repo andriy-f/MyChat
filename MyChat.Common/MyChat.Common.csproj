@@ -64,6 +64,7 @@
     <Compile Include="Models\Messages\ChatMessage.cs" />
     <Compile Include="Models\Messages\MessageType.cs" />
     <Compile Include="Models\Messages\ServiceMessageResponse.cs" />
+    <Compile Include="Models\Messages\SimpleMessage.cs" />
     <Compile Include="Models\Messages\SuperServiceMessage.cs" />
     <Compile Include="Models\Messages\TextMessage.cs" />
     <Compile Include="Models\RequestTypeEnum.cs" />
