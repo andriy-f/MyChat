@@ -3,6 +3,7 @@
 namespace Andriy.MyChat.Client
 {
     using System;
+    using System.Linq;
     using System.Windows.Forms;
 
     using global::MyChat.Client.Core;
@@ -62,17 +63,10 @@ namespace Andriy.MyChat.Client
             selroomform1.Show();
         }        
 
-        private void refreshDestination()
+        private async void refreshDestination()
         {
-            this.cbDest.Items.Clear();
-            this.cbDest.Items.Add("<Room>");
-            this.cbDest.Items.Add("<All>");
-            this.cbDest.Text = "<Room>";
-            chatClient.requestRoomUsers(this.room, () =>
-                {
-                    string[] users = chatClient.getRoomUsers();
-                    this.refreshDestinationInvoke(users);
-                });
+            var rooms = await this.chatClient.GetRoomUsers(this.room);
+            this.refreshDestinationInvoke(rooms.ToArray());
         }
 
         private void refreshDestinationInvoke(string[] users)

@@ -4,6 +4,7 @@
     {
         ResponseStatus = 0,
         Logon = 1,
-        RegisterNewUser = 2
+        RegisterNewUser = 2,
+        GetRooms = 8
     }
 }

@@ -2,6 +2,7 @@
 {
     using System;
 
+    [Serializable]
     public class Response : AbstractMessage
     {
         public Guid Id { get; set; }

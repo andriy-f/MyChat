@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Net;
     using System.Net.Sockets;
     using System.Threading;
@@ -10,6 +11,7 @@
     using Andriy.MyChat.Server.DAL;
 
     using global::MyChat.Common.Logging;
+    using global::MyChat.Common.Models;
 
     public class ChatServer : IServer
     {
@@ -113,6 +115,13 @@
             return this.roomBase.Keys;
         }
 
+        public IEnumerable<ChatRoomInfo> GetRoomInfos()
+        {
+            return
+                this.roomBase.Select(
+                    r => new ChatRoomInfo { Name = r.Key, IsPasswordProtected = r.Value.Password != null }).ToList();
+        }
+
         public void QueueClientForRemoval(ClientEndpoint clientEndpoint)
         {
             this.unusedClients.Add(clientEndpoint.Login);
@@ -144,6 +153,12 @@
             return this.roomBase[roomName].Password == password;
         }
 
+        public IEnumerable<string> GetRoomUsers(string roomName)
+        {
+            return this.roomBase[roomName].Users;
+        }
+            
+        [Obsolete]
         public byte[] FormatRoomUsers(string room)
         {
             var roomParams = this.roomBase[room];

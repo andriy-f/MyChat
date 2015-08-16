@@ -4,6 +4,7 @@ namespace Andriy.MyChat.Client
 {
     using System;
     using System.ComponentModel;
+    using System.Linq;
     using System.Windows.Forms;
 
     using global::MyChat.Client.Core;
@@ -15,24 +16,22 @@ namespace Andriy.MyChat.Client
         //volatile string[] rms = null;
 
         public SelRoomForm(ChatClient chatClient)
-        {            
+        {
             this.InitializeComponent();
 
             this.chatClient = chatClient;
-            this.refreshRooms();
+            this.RefreshRooms();
             this.tbRoom.Text = "r1";
             this.tbPass.Text="r1pass";
             this.tbConfPass.Text = "r1pass";
         }
 
-        public void refreshRooms()
-        {            
+        public async void RefreshRooms()
+        {
             this.cbRoomList.Text = "Refresh pending...";
-            chatClient.requestRooms(() =>
-            {
-                string[] rms = chatClient.getRooms();
-                this.cbRoomListAction(rms);
-            });            
+            var chatRoomInfos = await this.chatClient.GetRooms();
+            var roomNames = chatRoomInfos.Select(ri => ri.Name);
+            this.cbRoomListAction(roomNames.ToArray());
         }
 
         private void bCancel_Click(object sender, EventArgs e)
@@ -45,7 +44,7 @@ namespace Andriy.MyChat.Client
             else this.Close();
         }
 
-        private void bOK_Click(object sender, EventArgs e)
+        private async void bOK_Click(object sender, EventArgs e)
         {
             string room;
             if (this.rbNew.Checked)
@@ -57,13 +56,18 @@ namespace Andriy.MyChat.Client
                 room = this.cbRoomList.Text;
             }
             else throw new Exception("Radio buttons dont work");
-            if (chatClient.performJoinRoom(room, this.tbPass.Text))
+
+            var joinResult = await this.chatClient.JoinRoom(room, this.tbPass.Text);
+            if (joinResult == null)
             {
                 var chatForm1 = new ChatForm(this.chatClient, room);
                 chatForm1.Show();
                 this.Close();
             }
-            else MessageBox.Show("Can't enter room:\n Probably invalid password");
+            else
+            {
+                MessageBox.Show("Can't enter room:\n Probably invalid password");
+            }
         }
 
         private void rbNewExisting_CheckedChanged(object sender, EventArgs e)
@@ -111,7 +115,7 @@ namespace Andriy.MyChat.Client
                 if (rooms.Length > 0)
                     this.cbRoomList.SelectedIndex = 0;
                 else
-                    this.cbRoomList.Text = "<Empty>";
+                    this.cbRoomList.Text = "No chat rooms on server";
             }
         }
     }

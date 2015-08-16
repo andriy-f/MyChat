@@ -65,6 +65,8 @@
     <Compile Include="Models\Messages\MessageType.cs" />
     <Compile Include="Models\Messages\ServiceMessageResponse.cs" />
     <Compile Include="Models\Messages\SuperServiceMessage.cs" />
+    <Compile Include="Models\Messages\TextMessage.cs" />
+    <Compile Include="Models\RequestTypeEnum.cs" />
     <Compile Include="Network\CryptoProtocol.cs" />
     <Compile Include="Network\IStreamWrapper.cs" />
     <Compile Include="Network\FramedProtocol.cs" />

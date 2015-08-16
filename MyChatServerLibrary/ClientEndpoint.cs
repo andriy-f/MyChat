@@ -11,7 +11,9 @@
     using Andriy.MyChat.Server.Exceptions;
     using Andriy.Security.Cryptography;
 
+    using global::MyChat.Common;
     using global::MyChat.Common.Logging;
+    using global::MyChat.Common.Models;
     using global::MyChat.Common.Models.Messages;
     using global::MyChat.Common.Network;
 
@@ -135,148 +137,230 @@
 
             try
             {
-                // Parsing data from client
-                byte[] data;
-                int type = this.ReadByte(); // TODO: resolve blocking
-                string source, dest, messg;
-                switch (type)
+                var messageData = this.cryptoWrapper.Receive();
+                var superMessage = (SuperServiceMessage)CustomBinaryFormatter.Deserialize(messageData, 0, messageData.Length);
+                switch (superMessage.SuperMessageType)
                 {
-                    case 3: // Message to room
-                        data = this.ReadWrappedEncMsg();
-                        ParseChatMsg(data, out source, out dest, out messg); // dest - room
-                        Log.DebugFormat("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
-
-                        // if user(source) in room(dest)
-                        var senderClient = this;
-                        if (senderClient.Rooms.Contains(dest))
+                    case SuperServiceMessage.SuperServiceMessageType.Simple:
+                    case SuperServiceMessage.SuperServiceMessageType.Request:
+                        // GetRooms, for example
+                        var request = (Request)CustomBinaryFormatter.Deserialize(superMessage.DataBuffer, 0, superMessage.DataBuffer.Length);
+                        Response resp;
+                        SuperServiceMessage superResponse;
+                        switch (request.RequestType)
                         {
-                            var roomParams = this.server.GetRoom(dest);
-                            foreach (string roomUsr in roomParams.Users)
-                            {
-                                var destinationClient1 = this.server.GetChatClient(roomUsr);
-                                try
+                            case RequestTypeEnum.GetRooms:
+                                resp = new Response { Id = request.Id, IsSuccess = true, Data = CustomBinaryFormatter.Serialize(this.server.GetRoomInfos()) };
+                                superResponse = new SuperServiceMessage
+                                                        {
+                                                            SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Response,
+                                                            DataBuffer = CustomBinaryFormatter.Serialize(resp)
+                                                        };
+                                this.cryptoWrapper.Send(CustomBinaryFormatter.Serialize(superResponse));
+                                break;
+                            case RequestTypeEnum.GetRoomUsers:
+                                string roomName = System.Text.Encoding.UTF8.GetString(request.Data);
+                                var roomUsers = this.server.GetRoomUsers(roomName);
+                                resp = new Response
                                 {
-                                    destinationClient1.SendByte(3);
-                                    destinationClient1.WriteWrappedEncMsg(data);
-                                }
-                                catch (IOException)
+                                    Id = request.Id,
+                                    IsSuccess = true,
+                                    Data = CustomBinaryFormatter.Serialize(roomUsers)
+                                };
+                                superResponse = new SuperServiceMessage
                                 {
-                                    this.server.QueueClientForRemoval(destinationClient1);
+                                    SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Response,
+                                    DataBuffer = CustomBinaryFormatter.Serialize(resp)
+                                };
+                                this.cryptoWrapper.Send(CustomBinaryFormatter.Serialize(superResponse));
+                                break;
+                            case RequestTypeEnum.JoinRoom:
+                                string roomToJoin, roomPass;
+                                ParseJoinRoomMsg(request.Data, out roomToJoin, out roomPass);
+                                if (this.server.RoomExist(roomToJoin))
+                                {
+                                    if (this.server.ConfirmRoomPass(roomToJoin, roomPass))
+                                    {
+                                        // Allow join 
+                                        this.server.AddUserToRoom(roomToJoin, clientLogin);
+                                        resp = new Response { Id = request.Id, IsSuccess = true };
+                                        Log.DebugFormat("User '{0}' joined room '{1}' with pass '{2}'", clientLogin, roomToJoin, roomPass);
+                                    }
+                                    else
+                                    {
+                                        resp = new Response { Id = request.Id, IsSuccess = false };
+                                        Log.DebugFormat("User '{0}' failed to join room '{1}' because invalid pass '{2}'", clientLogin, roomToJoin, roomPass);
+                                    }
                                 }
-                            }
-                        }
-                        else
-                        {
-                            // client not in the room he marked as dest
-                            this.SendByte(1);
-                        }
+                                else
+                                {
+                                    // Room doesn't exist
+                                    this.server.TryCreateRoom(roomToJoin, roomPass);
+                                    this.server.AddUserToRoom(roomToJoin, clientLogin);
 
-                        break;
-                    case 4: // Message to user
-                        data = this.ReadWrappedEncMsg();
-                        ParseChatMsg(data, out source, out dest, out messg); // dest - user
-                        Log.DebugFormat("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
-                        var destinationClient = this.server.GetChatClient(dest);
-                        if (destinationClient != null)
-                        {
-                            try
-                            {
-                                destinationClient.SendByte(4);
-                                destinationClient.WriteWrappedEncMsg(data);
-                            }
-                            catch (IOException)
-                            {
-                                this.server.QueueClientForRemoval(destinationClient);
-                            }
-                        }
-                        else
-                        {
-                            // no Success - No Such Dest
-                            this.SendByte(1);
-                        }
+                                    resp = new Response { Id = request.Id, IsSuccess = true };
 
-                        break;
-                    case 5: // Message to All
-                        data = this.ReadWrappedEncMsg();
+                                    Log.DebugFormat("User '{0}' joined new room '{1}' with pass '{2}'", clientLogin, roomToJoin, roomPass);
+                                }
 
-                        // Display to all
-                        ParseChatMsg(data, out source, out dest, out messg);
-                        Log.DebugFormat("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
-                        foreach (var destinationClient1 in this.server.GetChatClients())
-                        {
-                            try
-                            {
-                                destinationClient1.SendByte(5);
-                                destinationClient1.WriteWrappedEncMsg(data);
-                            }
-                            catch (IOException)
-                            {
-                                this.server.QueueClientForRemoval(destinationClient1);
-                            }
+                                superResponse = new SuperServiceMessage
+                                {
+                                    SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Response,
+                                    DataBuffer = CustomBinaryFormatter.Serialize(resp)
+                                };
+                                this.cryptoWrapper.Send(CustomBinaryFormatter.Serialize(superResponse));
+                                break;
+                            default:
+                                throw new NotImplementedException();
                         }
-
                         break;
-                    case 6: // Join Room
-                        string room, pass;
-                        data = this.ReadWrappedEncMsg();
-                        ParseJoinRoomMsg(data, out room, out pass);
-                        if (this.server.RoomExist(room))
-                        {
-                            if (this.server.ConfirmRoomPass(room, pass))
-                            {
-                                // Allow join 
-                                this.server.AddUserToRoom(room, clientLogin);
-                                this.SendByte(0); // Success
-                                Log.DebugFormat("User '{0}' joined room '{1}' with pass '{2}'", clientLogin, room, pass);
-                            }
-                            else
-                            {
-                                this.SendByte(1); // Room Exist, invalid pass
-                                Log.DebugFormat(
-                                    "User '{0}' failed to join room '{1}' because invalid pass '{2}'",
-                                    clientLogin,
-                                    room,
-                                    pass);
-                            }
-                        }
-                        else
-                        {
-                            // Room doesn't exist
-                            this.server.TryCreateRoom(room, pass);
-                            this.server.AddUserToRoom(room, clientLogin);
-                            this.SendByte(0); // Success
-                            Log.DebugFormat("User '{0}' joined new room '{1}' with pass '{2}'", clientLogin, room, pass);
-                        }
-
+                    case SuperServiceMessage.SuperServiceMessageType.Response:
+                        // TODO
                         break;
-                    case 7: // Logout //user - de.Key, room.users - de.Key, if room empty -> delete
-                        this.SendByte(0); // Approve
-                        this.server.QueueClientForRemoval(this); // Free Resources
-                        Log.DebugFormat("Client '{0}' performed Logout", clientLogin);
-                        break;
-                    case 8: // Get Rooms                                        
-                        data = FormatGetRoomsMsgReply(this.server.GetRoomsNames().ToArray());
-                        this.SendByte(8);
-                        this.WriteWrappedMsg(data);
-                        Log.DebugFormat("Client '{0}' requested rooms", clientLogin);
-                        break;
-                    case 9: // Leave room
-                        data = this.ReadWrappedMsg();
-                        string leaveroom = ParseLeaveRoomMsg(data);
-                        this.server.RemoveClientFromRoom(clientLogin, leaveroom);
-                        this.SendByte(0); // Approve
-                        Log.DebugFormat("Client '{0}' leaved room '{1}'", clientLogin, leaveroom);
-                        break;
-                    case 11: // Get Room users
-                        string roomname = System.Text.Encoding.UTF8.GetString(this.ReadWrappedMsg());
-                        data = this.server.FormatRoomUsers(roomname);
-                        this.SendByte(11);
-                        this.WriteWrappedMsg(data);
-                        Log.DebugFormat("Client '{0}' requested room users", clientLogin);
-                        break;
-                    default: // Invalid message from client
-                        throw new Exception("Client send unknown token");
                 }
+
+                ////// Parsing data from client
+                ////byte[] data;
+                ////int type = this.ReadByte(); // TODO: resolve blocking
+                ////string source, dest, messg;
+                ////switch (type)
+                ////{
+                ////    case 3: // Message to room
+                ////        data = this.ReadWrappedEncMsg();
+                ////        ParseChatMsg(data, out source, out dest, out messg); // dest - room
+                ////        Log.DebugFormat("<Room>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
+
+                ////        // if user(source) in room(dest)
+                ////        var senderClient = this;
+                ////        if (senderClient.Rooms.Contains(dest))
+                ////        {
+                ////            var roomParams = this.server.GetRoom(dest);
+                ////            foreach (string roomUsr in roomParams.Users)
+                ////            {
+                ////                var destinationClient1 = this.server.GetChatClient(roomUsr);
+                ////                try
+                ////                {
+                ////                    destinationClient1.SendByte(3);
+                ////                    destinationClient1.WriteWrappedEncMsg(data);
+                ////                }
+                ////                catch (IOException)
+                ////                {
+                ////                    this.server.QueueClientForRemoval(destinationClient1);
+                ////                }
+                ////            }
+                ////        }
+                ////        else
+                ////        {
+                ////            // client not in the room he marked as dest
+                ////            this.SendByte(1);
+                ////        }
+
+                ////        break;
+                ////    case 4: // Message to user
+                ////        data = this.ReadWrappedEncMsg();
+                ////        ParseChatMsg(data, out source, out dest, out messg); // dest - user
+                ////        Log.DebugFormat("<User>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
+                ////        var destinationClient = this.server.GetChatClient(dest);
+                ////        if (destinationClient != null)
+                ////        {
+                ////            try
+                ////            {
+                ////                destinationClient.SendByte(4);
+                ////                destinationClient.WriteWrappedEncMsg(data);
+                ////            }
+                ////            catch (IOException)
+                ////            {
+                ////                this.server.QueueClientForRemoval(destinationClient);
+                ////            }
+                ////        }
+                ////        else
+                ////        {
+                ////            // no Success - No Such Dest
+                ////            this.SendByte(1);
+                ////        }
+
+                ////        break;
+                ////    case 5: // Message to All
+                ////        data = this.ReadWrappedEncMsg();
+
+                ////        // Display to all
+                ////        ParseChatMsg(data, out source, out dest, out messg);
+                ////        Log.DebugFormat("<All>[{0}]->[{1}]: \"{2}\"", source, dest, messg);
+                ////        foreach (var destinationClient1 in this.server.GetChatClients())
+                ////        {
+                ////            try
+                ////            {
+                ////                destinationClient1.SendByte(5);
+                ////                destinationClient1.WriteWrappedEncMsg(data);
+                ////            }
+                ////            catch (IOException)
+                ////            {
+                ////                this.server.QueueClientForRemoval(destinationClient1);
+                ////            }
+                ////        }
+
+                ////        break;
+                ////    case 6: // Join Room
+                ////        string room, pass;
+                ////        data = this.ReadWrappedEncMsg();
+                ////        ParseJoinRoomMsg(data, out room, out pass);
+                ////        if (this.server.RoomExist(room))
+                ////        {
+                ////            if (this.server.ConfirmRoomPass(room, pass))
+                ////            {
+                ////                // Allow join 
+                ////                this.server.AddUserToRoom(room, clientLogin);
+                ////                this.SendByte(0); // Success
+                ////                Log.DebugFormat("User '{0}' joined room '{1}' with pass '{2}'", clientLogin, room, pass);
+                ////            }
+                ////            else
+                ////            {
+                ////                this.SendByte(1); // Room Exist, invalid pass
+                ////                Log.DebugFormat(
+                ////                    "User '{0}' failed to join room '{1}' because invalid pass '{2}'",
+                ////                    clientLogin,
+                ////                    room,
+                ////                    pass);
+                ////            }
+                ////        }
+                ////        else
+                ////        {
+                ////            // Room doesn't exist
+                ////            this.server.TryCreateRoom(room, pass);
+                ////            this.server.AddUserToRoom(room, clientLogin);
+                ////            this.SendByte(0); // Success
+                ////            Log.DebugFormat("User '{0}' joined new room '{1}' with pass '{2}'", clientLogin, room, pass);
+                ////        }
+
+                ////        break;
+                ////    case 7: // Logout //user - de.Key, room.users - de.Key, if room empty -> delete
+                ////        this.SendByte(0); // Approve
+                ////        this.server.QueueClientForRemoval(this); // Free Resources
+                ////        Log.DebugFormat("Client '{0}' performed Logout", clientLogin);
+                ////        break;
+                ////    case 8: // Get Rooms
+                ////        data = FormatGetRoomsMsgReply(this.server.GetRoomsNames().ToArray());
+                ////        this.SendByte(8);
+                ////        this.WriteWrappedMsg(data);
+                ////        Log.DebugFormat("Client '{0}' requested rooms", clientLogin);
+                ////        break;
+                ////    case 9: // Leave room
+                ////        data = this.ReadWrappedMsg();
+                ////        string leaveroom = ParseLeaveRoomMsg(data);
+                ////        this.server.RemoveClientFromRoom(clientLogin, leaveroom);
+                ////        this.SendByte(0); // Approve
+                ////        Log.DebugFormat("Client '{0}' leaved room '{1}'", clientLogin, leaveroom);
+                ////        break;
+                ////    case 11: // Get Room users
+                ////        string roomname = System.Text.Encoding.UTF8.GetString(this.ReadWrappedMsg());
+                ////        data = this.server.FormatRoomUsers(roomname);
+                ////        this.SendByte(11);
+                ////        this.WriteWrappedMsg(data);
+                ////        Log.DebugFormat("Client '{0}' requested room users", clientLogin);
+                ////        break;
+                ////    default: // Invalid message from client
+                ////        throw new Exception("Client send unknown token");
+                ////}
             }
             catch (Exception ex)
             {

@@ -154,6 +154,10 @@
       <Project>{3add4ed4-8d9e-4c45-88d9-699bb744d829}</Project>
       <Name>MyChat.Client.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\MyChat.Common\MyChat.Common.csproj">
+      <Project>{b17c9414-5bcd-4b62-a1a6-cb30ab849585}</Project>
+      <Name>MyChat.Common</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

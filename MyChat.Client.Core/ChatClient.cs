@@ -1,8 +1,13 @@
 ﻿namespace MyChat.Client.Core
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.IO;
     using System.Net.Sockets;
+    using System.Runtime.Serialization.Formatters.Binary;
+    using System.Text;
+    using System.Threading.Tasks;
 
     using Andriy.MyChat.Client;
     using Andriy.Security.Cryptography;
@@ -10,7 +15,9 @@
     using global::MyChat.Client.Core.Logging;
 
     using MyChat.Client.Core.Exceptions;
+    using MyChat.Common;
     using MyChat.Common.Crypto;
+    using MyChat.Common.Models;
     using MyChat.Common.Models.Messages;
     using MyChat.Common.Network;
 
@@ -52,10 +59,13 @@
 
         private readonly Queue<ListenProcessor> listenQueue = new Queue<ListenProcessor>();
 
+        [Obsolete("Responses may not return in order, use waitingRequests instead")]
         private readonly Queue<Action> sendQueue = new Queue<Action>();
 
         private readonly System.Threading.Mutex mut = new System.Threading.Mutex();
         
+        private ConcurrentDictionary<Guid, Action<byte[]>> waitingRequests = new ConcurrentDictionary<Guid, Action<byte[]>>(); 
+
         private int portNum;
 
         private string password;
@@ -110,10 +120,7 @@
                 this.StopListener();
             }
 
-            this.listenerThread = new System.Threading.Thread(this.ListenToServer)
-                                      {
-                                          Priority = System.Threading.ThreadPriority.Lowest
-                                      };
+            this.listenerThread = new System.Threading.Thread(this.ListenToServer) { IsBackground = true };
             this.listenerThread.Start();
             Logger.Info("Listening started");
         }
@@ -130,55 +137,73 @@
                 ////throw new IndexOutOfRangeException(); TODO: find way to report to GUI
                 while (true)
                 {
-                    if (this.sendQueue.Count > 0)
-                    {
-                        Action toSend = this.sendQueue.Dequeue();
-                        toSend();
-                    }
+                    ////if (this.sendQueue.Count > 0)
+                    ////{
+                    ////    Action toSend = this.sendQueue.Dequeue();
+                    ////    toSend();
+                    ////}
+
                     if (this.stream.DataAvailable)
                     {
-                        this.mut.WaitOne();
-                        Byte[] streamData;// = readWrappedMsg(stream);
-                        int type = this.stream.ReadByte();
-                        string source, dest, message;
-                        switch (type)
+                        this.mut.WaitOne(); // Lock reading and writing with stream (obsolete)
+
+                        var dataBlock = this.cryptoWrapper.Receive();
+                        var superMessage = (SuperServiceMessage)CustomBinaryFormatter.Deserialize(dataBlock, 0, dataBlock.Length);
+                        switch (superMessage.SuperMessageType)
                         {
-                            case 1:
-                                this.MessageProcessor.process("Server", "<unknown>", "Previous message was not deivered");
-                                break;
-                            case 3://Incoming Message for room                                    
-                                streamData = this.ReadWrappedEncMsg();//streamData[0] must == 3
-                                parseChatMsg(streamData, out source, out dest, out message);
-                                //displaying Message
-                                Logger.Info(string.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
-                                this.MessageProcessor.processForRoom(source, dest, message);
-                                break;
-                            case 4://Incoming Message for user
-                                streamData = this.ReadWrappedEncMsg();//streamData[0] must == 4
-                                parseChatMsg(streamData, out source, out dest, out message);
-                                //displaying Message
-                                Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
-                                this.MessageProcessor.process(source, dest, message);
-                                break;
-                            case 5://Incoming Message for All
-                                streamData = this.ReadWrappedEncMsg();//streamData[0] must == 5
-                                parseChatMsg(streamData, out source, out dest, out message);
-                                //displaying Message
-                                Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
-                                this.MessageProcessor.process(source, dest, message);
-                                break;
-                            case 10:
-                                this.stream.WriteByte(10);//I'm alive!
-                                break;
-                            default:
-                                if (this.listenQueue.Count > 0 && type == this.listenQueue.Peek().code)
+                            case SuperServiceMessage.SuperServiceMessageType.Response:
+                                var responseModel = (Response)CustomBinaryFormatter.Deserialize(superMessage.DataBuffer, 0, superMessage.DataBuffer.Length);
+                                Action<byte[]> action;
+                                if (this.waitingRequests.TryGetValue(responseModel.Id, out action))
                                 {
-                                    this.listenQueue.Dequeue().toDo();
-                                    break;
+                                    action(responseModel.Data);
                                 }
-                                
-                                throw new Exception("Server sent unknown token");
+
+                                break;
                         }
+                        
+                        // ------
+                        ////byte[] streamData;// = readWrappedMsg(stream);
+                        ////int type = this.stream.ReadByte();
+                        ////string source, dest, message;
+                        ////switch (type)
+                        ////{
+                        ////    case 1:
+                        ////        this.MessageProcessor.process("Server", "<unknown>", "Previous message was not deivered");
+                        ////        break;
+                        ////    case 3://Incoming Message for room                                    
+                        ////        streamData = this.ReadWrappedEncMsg();//streamData[0] must == 3
+                        ////        parseChatMsg(streamData, out source, out dest, out message);
+                        ////        //displaying Message
+                        ////        Logger.Info(string.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
+                        ////        this.MessageProcessor.processForRoom(source, dest, message);
+                        ////        break;
+                        ////    case 4://Incoming Message for user
+                        ////        streamData = this.ReadWrappedEncMsg();//streamData[0] must == 4
+                        ////        parseChatMsg(streamData, out source, out dest, out message);
+                        ////        //displaying Message
+                        ////        Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
+                        ////        this.MessageProcessor.process(source, dest, message);
+                        ////        break;
+                        ////    case 5://Incoming Message for All
+                        ////        streamData = this.ReadWrappedEncMsg();//streamData[0] must == 5
+                        ////        parseChatMsg(streamData, out source, out dest, out message);
+                        ////        //displaying Message
+                        ////        Logger.Info(String.Format("[{0}] -> [{1}]: \"{2}\"", source, dest, message));
+                        ////        this.MessageProcessor.process(source, dest, message);
+                        ////        break;
+                        ////    case 10:
+                        ////        this.stream.WriteByte(10);//I'm alive!
+                        ////        break;
+                        ////    default:
+                        ////        if (this.listenQueue.Count > 0 && type == this.listenQueue.Peek().code)
+                        ////        {
+                        ////            this.listenQueue.Dequeue().toDo();
+                        ////            break;
+                        ////        }
+                                
+                        ////        throw new Exception("Server sent unknown token");
+                        ////}
 
                         this.mut.ReleaseMutex();
                     }
@@ -190,7 +215,7 @@
             }
             catch (Exception ex)
             {
-                Logger.Error(new Exception("Error while listening to server", ex).ToString());                
+                Logger.Error(new Exception("Error while listening to server", ex).ToString());
             }
         }
 
@@ -389,26 +414,72 @@
                 });
         }
 
-        public void requestRooms(Action ac)//type 8
+        public void queueChatMsg(TextMessage message)
         {
-            this.listenQueue.Enqueue(new ListenProcessor(8, ac));
-            this.stream.WriteByte(8);//Requesting rooms          
+            this.sendQueue.Enqueue(
+                () =>
+                    {
+                        var serializedMessage = CustomBinaryFormatter.Serialize(message);
+
+                        var superMessage = new SuperServiceMessage()
+                                               {
+                                                   SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Simple
+                                               };
+
+                        this.cryptoWrapper.Send(CustomBinaryFormatter.Serialize(superMessage));
+                    });
         }
 
+        /// <summary>
+        /// GetRooms
+        /// </summary>
+        public async Task<IEnumerable<ChatRoomInfo>> GetRooms()
+        {
+            var t = new TaskCompletionSource<IEnumerable<ChatRoomInfo>>();
+            var request = new Request { Id = Guid.NewGuid(), RequestType = RequestTypeEnum.GetRooms };
+            var serializedRequest = CustomBinaryFormatter.Serialize(request);
+            var superMessage = new SuperServiceMessage { SuperMessageType  = SuperServiceMessage.SuperServiceMessageType.Request, DataBuffer = serializedRequest };
+
+            var serializedSuperServiceMessage = CustomBinaryFormatter.Serialize(superMessage);
+            this.cryptoWrapper.Send(serializedSuperServiceMessage);
+
+            this.waitingRequests[request.Id] = bytes =>
+                {
+                    var res = (IEnumerable<ChatRoomInfo>)CustomBinaryFormatter.Deserialize(bytes, 0, bytes.Length);
+                    t.TrySetResult(res);
+                };
+
+            return await t.Task;
+        }
+
+        /// <summary>
+        /// GetRooms
+        /// </summary>
+        public async Task<IEnumerable<string>> GetRoomUsers(string room)
+        {
+            var t = new TaskCompletionSource<IEnumerable<string>>();
+            var request = new Request { Id = Guid.NewGuid(), RequestType = RequestTypeEnum.GetRoomUsers, Data = Encoding.UTF8.GetBytes(room) };
+            var serializedRequest = CustomBinaryFormatter.Serialize(request);
+            var superMessage = new SuperServiceMessage { SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Request, DataBuffer = serializedRequest };
+
+            var serializedSuperServiceMessage = CustomBinaryFormatter.Serialize(superMessage);
+            this.cryptoWrapper.Send(serializedSuperServiceMessage);
+
+            this.waitingRequests[request.Id] = bytes =>
+            {
+                var res = (IEnumerable<string>)CustomBinaryFormatter.Deserialize(bytes, 0, bytes.Length);
+                t.TrySetResult(res);
+            };
+
+            return await t.Task;
+        }
+
+        [Obsolete]
         public void requestRoomUsers(string room, Action ac)//type 11
         {
             this.listenQueue.Enqueue(new ListenProcessor(11, ac));
             this.stream.WriteByte(11);//Requesting room users
             this.WriteWrappedMsg(System.Text.Encoding.UTF8.GetBytes(room));
-        }
-
-        public string[] getRooms()
-        {
-            Byte[] bytes = this.ReadWrappedMsg();
-            if (bytes[0] == 0)
-                return parseGetRoomsMsgAns(bytes);
-            else
-                throw new Exception("Invalid responce from server");
         }
 
         public string[] getRoomUsers()
@@ -420,30 +491,37 @@
                 throw new Exception("Invalid responce from server");
         }
 
-        public bool performJoinRoom(string room, string pass)//type 6
+        /// <summary>
+        /// Join room
+        /// </summary>
+        /// <param name="roomName"></param>
+        /// <param name="pass"></param>
+        /// <returns></returns>
+        public async Task<string> JoinRoom(string roomName, string pass)
         {
-            Byte[] bytes = FormatJoinRoomMsg(room, pass);
-            while (this.stream.DataAvailable) { }//wait until nothing to read
-            int resp = -2;
-            this.mut.WaitOne();
-            this.stream.WriteByte(6);//Acnowledge server about action
-            this.WriteWrappedEncMsg(bytes);
-            resp = this.stream.ReadByte();
-            this.mut.ReleaseMutex();
-            switch (resp)
+            var t = new TaskCompletionSource<string>();
+            var request = new Request { Id = Guid.NewGuid(), RequestType = RequestTypeEnum.JoinRoom, Data = FormatJoinRoomMsg(roomName, pass)};
+            var serializedRequest = CustomBinaryFormatter.Serialize(request);
+            var superMessage = new SuperServiceMessage { SuperMessageType = SuperServiceMessage.SuperServiceMessageType.Request, DataBuffer = serializedRequest };
+
+            var serializedSuperServiceMessage = CustomBinaryFormatter.Serialize(superMessage);
+            this.cryptoWrapper.Send(serializedSuperServiceMessage);
+
+            this.waitingRequests[request.Id] = bytes =>
             {
-                case 0:
-                    // success
-                    return true;
-                case 1:
-                    // room already exist, invalid password
-                    return false;
-                case 2:
-                    // can't create room
-                    return false;
-                default:
-                    throw new ChatClientException("Error joining room");
-            }
+                if (bytes != null && bytes.Length > 0)
+                {
+                    var res = (string)CustomBinaryFormatter.Deserialize(bytes, 0, bytes.Length);
+                    t.TrySetResult(res);
+                }
+                else
+                {
+                    t.TrySetResult(null);
+                }
+                
+            };
+
+            return await t.Task;
         }
 
         // type 7

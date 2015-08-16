@@ -48,8 +48,8 @@
 
             chatClient.StartListener();
 
-            var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
-            Assert.True(joinRoomResult);
+            var joinRoomResult = chatClient.JoinRoom("r1", "testRoomPass").GetAwaiter().GetResult();
+            Assert.True(joinRoomResult == null);
 
             var messageReceivedBack = false;
             var syncRef = new object();
@@ -181,8 +181,8 @@
 
             chatClient.StartListener();
 
-            var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
-            Assert.True(joinRoomResult);
+            var joinRoomResult = chatClient.JoinRoom("r1", "testRoomPass").GetAwaiter().GetResult();
+            Assert.True(joinRoomResult == null);
 
             var messageReceivedBack = false;
             var syncRef = new object();
@@ -246,8 +246,8 @@
 
             chatClient.StartListener();
 
-            var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
-            Assert.True(joinRoomResult);
+            var joinRoomResult = chatClient.JoinRoom("r1", "testRoomPass").GetAwaiter().GetResult();
+            Assert.True(joinRoomResult == null);
 
             var messageReceivedBack = false;
             var syncRef = new object();
@@ -328,8 +328,8 @@
 
             chatClient.StartListener();
 
-            var joinRoomResult = chatClient.performJoinRoom("r1", "testRoomPass");
-            Assert.True(joinRoomResult);
+            var joinRoomResult = chatClient.JoinRoom("r1", "testRoomPass").GetAwaiter().GetResult();
+            Assert.True(joinRoomResult == null);
             
             return chatClient;
         }

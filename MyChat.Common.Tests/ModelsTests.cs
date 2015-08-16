@@ -70,6 +70,28 @@ namespace MyChat.Common.Tests
         }
 
         [Test]
+        public void SuperMessageCustomSerializerConsistencyTest()
+        {
+            var original = new SuperServiceMessage
+                               {
+                                   SuperMessageType =
+                                       SuperServiceMessage.SuperServiceMessageType.Response,
+                                   DataBuffer = new byte[] { 0xAA, 0xBB, 0xCC }
+                               };
+
+            // Serializing
+            var serializedData = CustomBinaryFormatter.Serialize(original);
+            Assert.NotNull(serializedData);
+            Assert.True(serializedData.Length > 0);
+
+            // Deserializing
+            var reconstructedMessage = (SuperServiceMessage)CustomBinaryFormatter.Deserialize(serializedData, 0, serializedData.Length);
+
+            Assert.AreEqual(original.SuperMessageType, reconstructedMessage.SuperMessageType);
+            Assert.AreEqual(original.DataBuffer, reconstructedMessage.DataBuffer);
+        }
+
+        [Test]
         public void ResponseMessageConsistencyTest1()
         {
             var original = new Response()
@@ -134,6 +156,29 @@ namespace MyChat.Common.Tests
         }
 
         [Test]
+        public void ResponseMessageCustomSerializerConsistencyTest1()
+        {
+            var original = new Response()
+            {
+                Id = Guid.NewGuid(),
+                IsSuccess = true,
+                Data = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }
+            };
+
+            // Serializing
+            var serializedData = CustomBinaryFormatter.Serialize(original);
+            Assert.NotNull(serializedData);
+            Assert.True(serializedData.Length > 0);
+
+            // Deserializing
+            var reconstructedMessage = CustomBinaryFormatter.DeserializeResponse(serializedData, 0, serializedData.Length);
+
+            Assert.AreEqual(original.Id, reconstructedMessage.Id);
+            Assert.AreEqual(original.IsSuccess, reconstructedMessage.IsSuccess);
+            Assert.AreEqual(original.Data, reconstructedMessage.Data);
+        }
+
+        [Test]
         public void RequestMessageConsistencyTest()
         {
             var original = new Request()
@@ -164,6 +209,26 @@ namespace MyChat.Common.Tests
         }
 
         [Test]
+        public void RequestMessageCustomSerializerConsistencyTest()
+        {
+            var original = new Request()
+            {
+                Id = Guid.NewGuid(),
+                Data = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }
+            };
+
+            // Serializing
+            var serializedData = CustomBinaryFormatter.Serialize(original);
+            Assert.NotNull(serializedData);
+            Assert.True(serializedData.Length > 0);
+
+            // Deserializing
+            var reconstructedMessage = (Request)CustomBinaryFormatter.Deserialize(serializedData, 0, serializedData.Length);
+            Assert.AreEqual(original.Id, reconstructedMessage.Id);
+            Assert.AreEqual(original.Data, reconstructedMessage.Data);
+        }
+
+        [Test]
         public void ChatRoomInfosSerializationTest()
         {
             var original = new[]
@@ -178,7 +243,7 @@ namespace MyChat.Common.Tests
             Assert.True(serializedData.Length > 0);
 
             // Deserializing
-            var reconstructed = CustomBinaryFormatter.Deserialize(serializedData, 0, serializedData.Length);
+            var reconstructed = CustomBinaryFormatter.DeserializeChatRoomInfos(serializedData, 0, serializedData.Length);
             CollectionAssert.AreEqual(original, reconstructed, new ChatRoomInfoComparer());
         }
     }

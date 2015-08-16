@@ -1,5 +1,8 @@
 ﻿namespace MyChat.Common.Models.Messages
 {
+    using System;
+
+    [Serializable]
     public class SuperServiceMessage : AbstractMessage
     {
         public SuperServiceMessageType SuperMessageType { get; set; }

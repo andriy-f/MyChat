@@ -1,6 +1,9 @@
 ﻿namespace Andriy.MyChat.Server
 {
+    using System;
     using System.Collections.Generic;
+
+    using global::MyChat.Common.Models;
 
     public interface IServer
     {
@@ -11,6 +14,8 @@
         RoomParams GetRoom(string name);
 
         IEnumerable<string> GetRoomsNames();
+
+        IEnumerable<ChatRoomInfo> GetRoomInfos();
 
         void QueueClientForRemoval(ClientEndpoint clientEndpoint);
 
@@ -30,6 +35,9 @@
 
         void RemoveClientFromRoom(string login, string room);
 
+        [Obsolete]
         byte[] FormatRoomUsers(string room);
+
+        IEnumerable<string> GetRoomUsers(string roomName);
     }
 }
